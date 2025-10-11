@@ -1,47 +1,57 @@
 ﻿using System.Diagnostics;
 using SPTarkov.DI.Annotations;
+using SPTarkov.Server.Core.Helpers;
+using SPTarkov.Server.Core.Models.Common;
 using SPTarkov.Server.Core.Models.Utils;
 using SPTarkov.Server.Core.Services;
 using TarkovTools.Models;
 
 namespace TarkovTools.Services;
 
-[Injectable]
+[Injectable(InjectionType.Singleton)]
 public class SearchService(
     ISptLogger<SearchService> logger,
     DatabaseService databaseService,
     CacheService cacheService,
-    LocaleService localeService
+    LocaleService localeService,
+    ItemHelper itemHelper
     )
 {
-    private readonly Dictionary<string, string> _localizedItemNames = [];
-    private readonly Dictionary<string, string> _localizedItemParentNames = [];
+    private readonly Dictionary<MongoId, string> _localizedItemNames = [];
+    private readonly Dictionary<MongoId, string> _localizedItemParentNames = [];
+
+    private bool _hydrated;
     
     public void CacheSearchIndexes()
     {
+        if (_hydrated)
+        {
+            return;
+        }
+        
         logger.Info("[TarkovTools] Caching search indexes this might take a minute...");
         
-        var items = databaseService.GetTables().Templates.Items;
+        var items = databaseService.GetTables().Templates.Items
+            .Where(item => itemHelper.IsValidItem(item.Key));
 
         var sw = Stopwatch.StartNew();
         
-        foreach (var item in items)
+        foreach (var (id, _) in items)
         {
-            _localizedItemNames[item.Key] = GetLocalizedName(item.Key);
+            _localizedItemNames[id] = GetLocalizedName(id);
         }
         
         logger.Info($"[TarkovTools] Caching {_localizedItemNames.Count} localized items for search indexing took {sw.ElapsedMilliseconds}ms");
         sw.Restart();
         
-        var parents = items
-            .Select(x => x.Value.Parent);
-        
-        foreach (var parent in parents)
+        foreach (var parent in items.Select(x => x.Value.Parent))
         {
             _localizedItemParentNames[parent] = GetLocalizedName(parent);
         }
         
         logger.Info($"[TarkovTools] Caching {_localizedItemParentNames.Count} localized parent items for search indexing took {sw.ElapsedMilliseconds}ms");
+        
+        _hydrated = true;
     }
     
     public async Task<IEnumerable<SearchResult>> SearchItems(string value, CancellationToken token)
@@ -56,6 +66,8 @@ public class SearchService(
     
     public async Task<List<SearchResult>> SearchItems(string query)
     {
+        logger.Debug($"[TarkovTools] Item Search: {query}");
+        
         // Return nothing
         if (string.IsNullOrWhiteSpace(query)) return [];
         
@@ -63,7 +75,9 @@ public class SearchService(
         var sortedDictionaryDescending = _localizedItemNames.OrderByDescending(pair => pair.Value)
             .ToDictionary(pair => pair.Key, pair => pair.Value);
         
-        var matches = sortedDictionaryDescending.Where(x => x.Key.Contains(query))
+        logger.Debug($"(sortedDictionaryDescending) count {_localizedItemNames.Count}");
+        
+        var matches = sortedDictionaryDescending.Where(x => x.Value.Contains(query))
             .ToDictionary(x => x.Key, x => x.Value);
         
         foreach (var kvp in sortedDictionaryDescending.Where(x => 
@@ -84,6 +98,8 @@ public class SearchService(
     
     public async Task<List<SearchResult>> SearchItemParents(string query)
     {
+        logger.Debug($"[TarkovTools] Parent Item Search: {query}");
+        
         // Return nothing
         if (string.IsNullOrWhiteSpace(query)) return [];
         
@@ -91,7 +107,9 @@ public class SearchService(
         var sortedDictionaryDescending = _localizedItemParentNames.OrderByDescending(pair => pair.Value)
             .ToDictionary(pair => pair.Key, pair => pair.Value);
         
-        var matches = sortedDictionaryDescending.Where(x => x.Key.Contains(query))
+        logger.Debug($"(sortedDictionaryDescending) count {sortedDictionaryDescending.Count}");
+        
+        var matches = sortedDictionaryDescending.Where(x => x.Value.Contains(query))
             .ToDictionary(x => x.Key, x => x.Value);
         
         foreach (var kvp in sortedDictionaryDescending.Where(x => 
@@ -105,7 +123,7 @@ public class SearchService(
 
         var results = GetSearchResults(matches);
         
-        logger.Debug($"ItemParent search yielded {results.Count} parents");
+        logger.Debug($"Item parent search yielded {results.Count} parents");
         
         return results;
     }
@@ -115,31 +133,27 @@ public class SearchService(
         return [];
     }
 
-    public string GetLocalizedName(string id)
+    public string GetLocalizedName(MongoId id)
     {
-        if (cacheService.GlobalLocales?.TryGetValue($"{id} Name", out var locale) ?? false)
+        if (cacheService.GlobalLocales?.TryGetValue($"{id.ToString()} Name", out var locale) ?? false)
         {
             return locale;
         }
         
-        logger.Debug($"Could not find locale `{id} Name`");
         return string.Empty;
     }
 
-    public string GetLocalizedNickname(string id)
+    public string GetLocalizedNickname(MongoId id)
     {
-        var found = localeService.GetLocaleDb().TryGetValue($"{id} Nickname", out var locale);
-        
-        if (!found || locale is null)
+        if (cacheService.GlobalLocales?.TryGetValue($"{id.ToString()} Nickname", out var locale) ?? false)
         {
-            logger.Error($"Could not find locale `{id} Nickname`");
-            return string.Empty;
+            return locale;
         }
         
-        return locale;
+        return string.Empty;
     }
     
-    private static List<SearchResult> GetSearchResults(Dictionary<string, string>  matchList)
+    private static List<SearchResult> GetSearchResults(Dictionary<MongoId, string>  matchList)
     {
         var results = new List<SearchResult>();
         foreach (var match in matchList)

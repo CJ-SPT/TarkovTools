@@ -5,7 +5,7 @@ using TarkovTools.Utils;
 
 namespace TarkovTools.Services;
 
-[Injectable]
+[Injectable(InjectionType.Singleton)]
 public class CacheService(
     ISptLogger<CacheService> logger,
     DatabaseService  databaseService,
