@@ -1,39 +1,63 @@
 ﻿using System.Reflection;
 using SPTarkov.DI.Annotations;
 using SPTarkov.Server.Core.Models.Utils;
+// ReSharper disable MemberCanBeMadeStatic.Global
+// ReSharper disable MemberCanBePrivate.Global
 
 namespace TarkovTools.Utils;
 
 [Injectable]
-public class PathUtil(ISptLogger<PathUtil> logger)
+public class PathUtil
 {
+    #region ROOT
+
     /// <summary>
-    ///     wwwroot/
+    ///     root/
     /// </summary>
-    public string WwwRootPath => Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "wwwroot");
+    public string RootModPath => Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
     
     /// <summary>
-    ///     wwwroot/presets
+    ///     root/settings.json
     /// </summary>
-    public string SettingsJsonPath => Path.Combine(WwwRootPath, "settings.json");
+    public string SettingsJsonPath => Path.Combine(RootModPath, "settings.json");
+
+    /// <summary>
+    ///     root/presets
+    /// </summary>
+    public string PresetPath => Path.Combine(RootModPath, "presets");
+    
+    #endregion
+    
+    #region WWWROOT
+
+    /// <summary>
+    ///      root/wwwroot/
+    /// </summary>
+    public string WwwRootPath => Path.Combine(RootModPath, "wwwroot");
     
     /// <summary>
-    ///     SPT_Data/
-    /// </summary>
-    public string SptDataPath => Path.Combine(Directory.GetCurrentDirectory(), "SPT_Data");
-    
-    /// <summary>
-    ///     SPT_Data/images/trader/avatar
-    /// </summary>
-    public string TraderImagePath => Path.Combine(SptDataPath, "images", "trader", "avatar");
-    
-    /// <summary>
-    ///     wwwroot/images
+    ///     root/wwwroot/images
     /// </summary>
     public string ImageCachePath => Path.Combine(WwwRootPath, "images");
+
+    #endregion
+    
+    #region SPT
+
+    /// <summary>
+    ///     SPT_ROOT/
+    /// </summary>
+    public string SptRoot => Directory.GetCurrentDirectory();
     
     /// <summary>
-    ///     wwwroot/presets
+    ///     SPT_ROOT/SPT_Data/
     /// </summary>
-    public string PresetPath => Path.Combine(WwwRootPath, "presets");
+    public string SptDataPath => Path.Combine(SptRoot, "SPT_Data");
+    
+    /// <summary>
+    ///     SPT_ROOT/SPT_Data/images/trader/avatar
+    /// </summary>
+    public string SptTraderImagePath => Path.Combine(SptDataPath, "images", "trader", "avatar");
+
+    #endregion
 }

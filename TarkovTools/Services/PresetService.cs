@@ -14,8 +14,8 @@ public class PresetService(
     JsonUtil jsonUtil
     )
 {
-    private readonly List<TarkovToolsPreset> _loadedPresets = [];
-    private TarkovToolsPreset? _selectedPreset;
+    public List<TarkovToolsPreset> LoadedPresets { get; } = [];
+    public TarkovToolsPreset? SelectedPreset { get; private set; }
     
     private bool _initialized;
     
@@ -35,8 +35,8 @@ public class PresetService(
 
         if (!string.IsNullOrEmpty(settingsService.Settings?.SelectedPreset))
         {
-            var preset = _loadedPresets.FirstOrDefault(x => x.Name == settingsService.Settings.SelectedPreset);
-            _selectedPreset = preset;
+            var preset = LoadedPresets.FirstOrDefault(x => x.Name == settingsService.Settings.SelectedPreset);
+            SelectedPreset = preset;
         }
         
         _initialized = true;
@@ -48,13 +48,43 @@ public class PresetService(
         {
             Name = name,
         };
-
+        
+        LoadedPresets.Add(result);
+        SavePreset(result);
+        
         if (select)
         {
-            _selectedPreset = result;
+            SelectedPreset = result;
         }
         
         return result;
+    }
+
+    /// <summary>
+    ///     Selects the provided preset
+    /// </summary>
+    /// <param name="preset">preset to select</param>
+    public void SelectPreset(TarkovToolsPreset preset)
+    {
+        SelectedPreset = preset;
+    }
+
+    /// <summary>
+    ///     Selects the provided preset by name
+    /// </summary>
+    /// <param name="name">Name of the preset to select</param>
+    /// <returns>True if selected</returns>
+    public bool SelectPreset(string name)
+    {
+        var preset = LoadedPresets.FirstOrDefault(x => x.Name == name);
+        if (preset is null)
+        {
+            logger.Warning($"Could not find preset with name {name}");
+            return false;
+        }
+        
+        SelectedPreset = preset;
+        return true;
     }
     
     /// <summary>
@@ -82,25 +112,46 @@ public class PresetService(
                 continue;
             }
             
-            _loadedPresets.Add(preset);
+            LoadedPresets.Add(preset);
+        }
+
+        // Set the selected preset
+        switch (LoadedPresets.Count)
+        {
+            // No loaded presets
+            case 0:
+                logger.Error("[TarkovTools] No presets found after loading...");
+                return;
+            // Use the first preset loaded when the selected preset doesn't exist
+            case 1 when string.IsNullOrEmpty(settingsService.Settings.SelectedPreset):
+                SelectedPreset = LoadedPresets[0];
+                settingsService.Settings.SelectedPreset = SelectedPreset.Name;
+                break;
+            // Set the users selected preset
+            default:
+                if (!string.IsNullOrEmpty(settingsService.Settings.SelectedPreset))
+                {
+                    SelectPreset(settingsService.Settings.SelectedPreset);
+                }
+                break;
         }
         
-        logger.Info($"[TarkovTools] Loaded {directories.Length} presets");
+        logger.Info($"[TarkovTools] Loaded {LoadedPresets.Count} presets");
     }
 
     public void SavePresets()
     {
-        if (_loadedPresets.Count == 0)
+        if (LoadedPresets.Count == 0)
         {
             return;
         }
         
-        foreach (var preset in _loadedPresets)
+        foreach (var preset in LoadedPresets)
         {
             SavePreset(preset);
         }
         
-        logger.Info($"[TarkovTools] Saved {_loadedPresets.Count} presets");
+        logger.Info($"[TarkovTools] Saved {LoadedPresets.Count} presets");
     }
 
     public void SavePreset(TarkovToolsPreset preset)

@@ -38,7 +38,7 @@ public class CacheService(
 
     private void CacheStockTraderImages()
     {
-        var sptImagePath = pathUtil.TraderImagePath;
+        var sptImagePath = pathUtil.SptTraderImagePath;
         var traderImageCachePath = Path.Combine(pathUtil.ImageCachePath, "traders");
 
         if (!Directory.Exists(traderImageCachePath))

@@ -7,23 +7,26 @@ using TarkovTools.Utils;
 namespace TarkovTools.Services;
 
 [Injectable(InjectionType.Singleton)]
-public class SettingsService(
-    ISptLogger<SettingsService> logger, 
-    PathUtil pathUtil,
-    JsonUtil jsonUtil
-    )
+public class SettingsService
 {
     private bool _initialized;
-    public TarkovToolsSettings? Settings { get; private set; }
-    
-    public void Initialize()
-    {
-        if (_initialized)
-        {
-            return;
-        }
+    public required TarkovToolsSettings Settings { get; set; }
 
-        if (!File.Exists(pathUtil.SettingsJsonPath))
+    private readonly ISptLogger<SettingsService> _logger;
+    private readonly PathUtil _pathUtil;
+    private readonly JsonUtil _jsonUtil;
+    
+    public SettingsService(
+        ISptLogger<SettingsService> logger, 
+        PathUtil pathUtil,
+        JsonUtil jsonUtil
+    )
+    {
+        _logger = logger;
+        _pathUtil = pathUtil;
+        _jsonUtil = jsonUtil;
+        
+        if (!File.Exists(_pathUtil.SettingsJsonPath))
         {
             SaveSettings(true);
             
@@ -31,60 +34,60 @@ public class SettingsService(
             return;
         }
         
-        LoadSettings();
+        Settings = LoadSettings() ?? throw new NullReferenceException("[TarkovTools] Settings is null when constructing SettingsService");
     }
     
     public void SaveSettings(bool createNew = false)
     {
-        if (Settings is null && !createNew)
-        {
-            logger.Error("[TarkovTools] Settings null when attempting to save settings.");
-            return;
-        }
-
         if (createNew)
         {
             Settings = CreateSettings();
         }
         
-        if (!File.Exists(pathUtil.SettingsJsonPath))
+        if (!File.Exists(_pathUtil.SettingsJsonPath))
         {
-            File.Create(pathUtil.SettingsJsonPath).Close();
+            File.Create(_pathUtil.SettingsJsonPath).Close();
         }
         
-        var json = jsonUtil.Serialize(Settings, true);
-        File.WriteAllText(pathUtil.SettingsJsonPath, json);
+        var json = _jsonUtil.Serialize(Settings, true);
+        File.WriteAllText(_pathUtil.SettingsJsonPath, json);
         
-        logger.Info("[TarkovTools] Settings file created.");
+        _logger.Info("[TarkovTools] Settings file created.");
     }
 
-    public void LoadSettings()
+    public TarkovToolsSettings? LoadSettings()
     {
-        if (File.Exists(pathUtil.SettingsJsonPath))
+        if (File.Exists(_pathUtil.SettingsJsonPath))
         {
             try
             {
-                var text = File.ReadAllText(pathUtil.SettingsJsonPath);
-                Settings = jsonUtil.Deserialize<TarkovToolsSettings>(text);
-            
+                var text = File.ReadAllText(_pathUtil.SettingsJsonPath);
+                var tmpSettings = _jsonUtil.Deserialize<TarkovToolsSettings>(text);
+                if (tmpSettings is null)
+                {
+                    _logger.Error("[TarkovTools] Settings file could not be loaded.");
+                    return null;
+                };
+                
+                Settings = tmpSettings;
                 _initialized = true;
-            
-                logger.Info("[TarkovTools] Settings file loaded.");
-                return;
+                _logger.Info("[TarkovTools] Settings file loaded.");
+                return tmpSettings;
             }
             catch (Exception e)
             {
-                logger.Warning("[TarkovTools] Error loading settings. Most likely out of date settings file.");
-                logger.Warning("[TarkovTools] Creating a backup and new creating default settings...");
+                _logger.Warning("[TarkovTools] Error loading settings. Most likely out of date settings file.");
+                _logger.Warning("[TarkovTools] Creating a backup and new creating default settings...");
                 
-                File.Copy(pathUtil.SettingsJsonPath, $"{pathUtil.SettingsJsonPath}.bak");
+                File.Copy(_pathUtil.SettingsJsonPath, $"{_pathUtil.SettingsJsonPath}.bak");
                 
                 SaveSettings(true);
-                return;
+                return Settings;
             }
         }
         
-        logger.Error("[TarkovTools] Settings file not found when attempting to load settings.");
+        _logger.Error("[TarkovTools] Settings file not found when attempting to load settings.");
+        return null;
     }
 
     private static TarkovToolsSettings CreateSettings()

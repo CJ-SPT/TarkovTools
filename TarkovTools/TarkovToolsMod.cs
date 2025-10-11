@@ -8,7 +8,6 @@ namespace TarkovTools;
 [Injectable(TypePriority = OnLoadOrder.PostDBModLoader + 1)]
 public class TarkovToolsMod(
     ISptLogger<TarkovToolsMod> logger,
-    SettingsService settingsService,
     CacheService cacheService,
     SearchService searchService,
     PresetService presetService
@@ -21,7 +20,6 @@ public class TarkovToolsMod(
     {
         try
         {
-            settingsService.Initialize();
             cacheService.Hydrate();
             searchService.CacheSearchIndexes();
             presetService.Initialize();
