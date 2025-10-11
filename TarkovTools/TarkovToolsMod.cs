@@ -7,9 +7,11 @@ namespace TarkovTools;
 
 [Injectable(TypePriority = OnLoadOrder.PostDBModLoader + 1)]
 public class TarkovToolsMod(
-    ISptLogger<TarkovToolsMod> logger, 
+    ISptLogger<TarkovToolsMod> logger,
+    SettingsService settingsService,
     CacheService cacheService,
-    SearchService searchService
+    SearchService searchService,
+    PresetService presetService
     ) : IOnLoad
 {
     public const string Version = "0.1.0";
@@ -19,8 +21,10 @@ public class TarkovToolsMod(
     {
         try
         {
+            settingsService.Initialize();
             cacheService.Hydrate();
             searchService.CacheSearchIndexes();
+            presetService.Initialize();
             
             logger.Info("TarkovTools is loaded");
         }
