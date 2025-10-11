@@ -81,16 +81,12 @@ public class SearchService(
     
     public async Task<List<SearchResult>> SearchItems(string query)
     {
-        logger.Debug($"[TarkovTools] Item Search: {query}");
-        
         // Return nothing
         if (string.IsNullOrWhiteSpace(query)) return [];
         
         // Order the dictionary by value in descending order
         var sortedDictionaryDescending = _localizedItemNames.OrderByDescending(pair => pair.Value)
             .ToDictionary(pair => pair.Key, pair => pair.Value);
-        
-        logger.Debug($"(sortedDictionaryDescending) count {_localizedItemNames.Count}");
         
         var matches = sortedDictionaryDescending.Where(x => x.Value.Contains(query))
             .ToDictionary(x => x.Key, x => x.Value);
@@ -106,23 +102,17 @@ public class SearchService(
         
         var results = GetSearchResults(matches);
         
-        logger.Debug($"Item search yielded {results.Count} items");
-        
         return results;
     }
     
     public async Task<List<SearchResult>> SearchItemParents(string query)
     {
-        logger.Debug($"[TarkovTools] Parent Item Search: {query}");
-        
         // Return nothing
         if (string.IsNullOrWhiteSpace(query)) return [];
         
         // Order the dictionary by value in descending order
         var sortedDictionaryDescending = _localizedItemParentNames.OrderByDescending(pair => pair.Value)
             .ToDictionary(pair => pair.Key, pair => pair.Value);
-        
-        logger.Debug($"(sortedDictionaryDescending) count {sortedDictionaryDescending.Count}");
         
         var matches = sortedDictionaryDescending.Where(x => x.Value.Contains(query))
             .ToDictionary(x => x.Key, x => x.Value);
@@ -137,8 +127,6 @@ public class SearchService(
         }
 
         var results = GetSearchResults(matches);
-        
-        logger.Debug($"Item parent search yielded {results.Count} parents");
         
         return results;
     }

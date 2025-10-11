@@ -11,13 +11,18 @@
                  SearchFunc="GetSearchFunc()"
                  AnchorOrigin="Origin.TopCenter"
                  TransformOrigin="Origin.BottomCenter"
-                 ToStringFunc="@(s=> s is null ? string.Empty : s.LocalizedName)"
+                 ToStringFunc="@(s => s is null ? string.Empty : s.LocalizedName)"
                  Clearable="true"
                  OnClearButtonClick="OnCleared"
                  Variant="Variant.Outlined"
                  DropdownSettings="_dropdownSettings"
                  Class="flex-grow-1"
-                 ValueChanged="OnValueChanged"/>
+                 Style="font-size: 12px"
+                 ValueChanged="OnValueChanged">
+    <ItemTemplate>
+        <MudText Style="font-size: 12px;">@context.LocalizedName</MudText>
+    </ItemTemplate>
+</MudAutocomplete>
 
 @code {
     /// <summary>
