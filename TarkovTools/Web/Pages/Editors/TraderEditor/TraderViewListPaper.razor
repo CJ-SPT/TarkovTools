@@ -1,18 +1,13 @@
 ﻿@using SPTarkov.Server.Core.Models.Common
 @using SPTarkov.Server.Core.Models.Eft.Common.Tables
+@using SPTarkov.Server.Core.Models.Spt.Logging
 @using SPTarkov.Server.Core.Models.Utils
-@using SPTarkov.Server.Core.Services
 @using SPTarkov.Server.Core.Utils
-@using global::TarkovTools.Utils
 @using Path = System.IO.Path
 
-@inject DatabaseService Database;
-@inject SearchService SearchService;
-@inject LocaleService LocaleService;
-
 @inject ISptLogger<TarkovToolsMod> Logger;
-@inject IDialogService DialogueService;
-@inject PathUtil PathUtil;
+@inject SearchService SearchService;
+@inject ChangeTrackerService ChangeTracker;
 @inject FileUtil FileUtil;
 @inject JsonUtil JsonUtil;
 
@@ -77,7 +72,7 @@
     [Inject] 
     public required IDialogService DialogService { get; set; }
 
-    private Trader? _selectedTrader;
+    private Trader? _selectedTraderInList;
 
     public bool ShowTraderImportOverlay { get; set; }
     
@@ -85,18 +80,18 @@
     {
         if (!TraderEditor.GetTraders().TryGetValue(id, out var trader))
         {
-            Logger.Debug($"Could not find tid `{id}` in database");
+            Logger.Error($"[TarkovTools] Could not find tid `{id}` in database");
             await CreateNewTrader();
             return;
         }
 
-        _selectedTrader = trader;
+        _selectedTraderInList = trader;
         StateHasChanged();
     }
 
     private async Task CreateNewTraderFromTemplate()
     {
-        if (_selectedTrader is null)
+        if (_selectedTraderInList is null)
         {
             _ = await DialogService.ShowMessageBox(
                 "No Template Selected", 
@@ -105,18 +100,31 @@
             return;
         }
 
-        var name = SearchService.GetLocalizedNickname(_selectedTrader!.Base.Id);
+        if (await ShouldSaveChanges())
+        {
+            // TODO: Export
+            Logger.Warning("[TarkovTools] EXPORT NOT IMPLEMENTED");
+            return;
+        }
+
+        var name = SearchService.GetLocalizedNickname(_selectedTraderInList!.Base.Id);
         var result = await DialogService.ShowMessageBox(
             "Create From Template", 
-            $"Use {name} as a template? Any unsaved progress will be lost.",
+            $"Use {name} as a template?",
             yesText:"Yes", noText: "Cancel");
 
-        if (result is not null && (bool)result)
+        // Create the templated trader
+        if (result != null && result.Value)
         {
-            var traderText = JsonUtil.Serialize(_selectedTrader);
+            var traderText = JsonUtil.Serialize(_selectedTraderInList);
             TraderEditor.SelectedTrader = JsonUtil.Deserialize<Trader>(traderText);
             TraderEditor.SelectedTrader!.Base.Id = new MongoId();
-        
+
+            TrackTrader();
+            
+            if (Logger.IsLogEnabled(LogLevel.Debug))
+                Logger.Debug($"Created trader {TraderEditor.SelectedTrader!.Base.Id}");
+            
             RefreshAction.Invoke();
             TraderEditor.InvokeTraderChanged();
         }
@@ -124,12 +132,19 @@
     
     private async Task CreateNewTrader()
     {
+        if (await ShouldSaveChanges())
+        {
+            // TODO: Export
+            Logger.Warning("[TarkovTools] EXPORT NOT IMPLEMENTED");
+            return;
+        }
+        
         var result = await DialogService.ShowMessageBox(
             "Create New Trader", 
             "Are you sure? Any unsaved progress will be lost.",
             yesText:"Create", cancelText:"Cancel");
         
-        if (result is not null && (bool)result)
+        if (result != null && result.Value)
         {
             TraderEditor.SelectedTrader = new Trader
             {
@@ -149,6 +164,7 @@
                 Services = []
             };
             
+            TrackTrader();
             TraderEditor.InvokeTraderChanged();
             StateHasChanged();
         }
@@ -161,11 +177,54 @@
             "Are you sure? Any unsaved progress will be lost.",
             yesText:"Import", cancelText:"Cancel");
 
-        if (result is null || !(bool)result) return;
+        if (result is null || !result.Value)
+        {
+            return;
+        }
         
         ShowTraderImportOverlay = !ShowTraderImportOverlay;
     }
 
+    /// <summary>
+    ///     Check if the selected trader is null, if it is return true. If selected trader is not null prompt the
+    /// user to continue. If they say yes, then return true, otherwise false
+    /// </summary>
+    /// <returns></returns>
+    private async Task<bool> ShouldSaveChanges()
+    {
+        var selectedTrader = TraderEditor.SelectedTrader;
+        
+        Logger.Debug("ShouldSaveChanges");
+        
+        // No trader selected or no changes
+        if (selectedTrader is null || !ChangeTracker.HasChanges(selectedTrader, "SelectedTrader"))
+        {
+            Logger.Debug("ShouldNotSaveEarly");
+            // Nothing to save
+            return false;
+        }
+        
+        var currName = SearchService.GetLocalizedNickname(selectedTrader.Base.Id);
+        var overwriteResult = await DialogService.ShowMessageBox(
+            "You have unsaved changes", 
+            $"Save changes to: {currName}?",
+            yesText:"Yes", noText: "Cancel");
+
+        var result = overwriteResult != null && overwriteResult.Value;
+        Logger.Debug(result ? "ShouldSave" : "ShouldNotSave");
+        return result;
+
+    }
+
+    private void TrackTrader()
+    {
+        const string objectTrackingId = "SelectedTrader";
+        // Free any currently tracked object then track our new object
+        ChangeTracker.UnTrackObject(objectTrackingId);
+        // Track the objects current state to compare later, make sure we do this after we change the Id
+        ChangeTracker.TrackObject(TraderEditor.SelectedTrader, objectTrackingId);
+    }
+    
     private async Task ExportTrader()
     {
         //var directory = await DialogueService.PickDirectory("Choose path");
