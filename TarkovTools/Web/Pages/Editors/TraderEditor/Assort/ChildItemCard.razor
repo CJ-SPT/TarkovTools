@@ -97,8 +97,8 @@
     [Parameter] public required CellContext<AssortGridDataModel> AssortCellContext { get; set; }
 
     private AssortGridDataModel? _childCellContext;
-    private MudMenu? _contextMenu = null!;
-    private SearchResult? _itemSearchResult = null!;
+    private MudMenu? _contextMenu;
+    private SearchResult? _itemSearchResult;
 
     private string _parentSelectValue = string.Empty;
     private string _slotIdValue = string.Empty;

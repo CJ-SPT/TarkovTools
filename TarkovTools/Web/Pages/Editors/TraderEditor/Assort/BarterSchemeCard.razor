@@ -5,7 +5,7 @@
 @inject ISptLogger<TarkovToolsMod> Logger;
 @inject SearchService SearchService;
 @inject DatabaseService Database;
-
+@inject IDialogService DialogService;
 
 <MudCard>
     <MudCardHeader>
@@ -42,6 +42,7 @@
                              Bordered="true"
                              Dense="true"
                              EditMode="DataGridEditMode.Cell"
+                             RowContextMenuClick="OpenMenuContent"
                              CommittedItemChanges="OnSchemeChanged">
 
                     <Columns>
@@ -52,6 +53,12 @@
                         <PropertyColumn Property="x => x.Count" Title="Count"/>
                     </Columns>
                 </MudDataGrid>
+                
+                <MudMenu PositionAtCursor="true" @ref="_contextMenu" id="_childItemContextMenu">
+                    <MudMenuItem Icon="@Icons.Material.Filled.Delete" OnClick="RemoveItem">
+                        Delete
+                    </MudMenuItem>
+                </MudMenu>
             </MudItem>
             
             <MudItem xs="3" sm="3" md="3" Class="ma-1" Style="display: flex; justify-content: center; align-items: center;">
@@ -123,7 +130,11 @@
     [Parameter] public required AssortDataGrid DataGrid { get; set; }
 
     [Parameter] public required CellContext<AssortGridDataModel> AssortCellContext { get; set; }
-
+    
+    private BarterScheme? _childCellContext;
+    private int? _selectedRowIndex;
+    
+    private MudMenu? _contextMenu;
     private SearchResult? _searchResult;
 
     private Upd SelectedItemUpd => DataGrid.AssortItems.First(i => i.Id == AssortCellContext.Item.Id).Upd!;
@@ -132,7 +143,7 @@
     
     private List<BarterScheme> GetBarterSchemesForRow()
     {
-        return DataGrid.BarterScheme[AssortCellContext.Item.Id][0]!;
+        return DataGrid.BarterScheme[AssortCellContext.Item.Id][0];
     }
     
     private int GetLoyaltyLevel(string id)
@@ -149,7 +160,7 @@
         if (schemes.Any(s => s.Template == _searchResult.Id)) return;
         
         GetBarterSchemesForRow().Add(
-            new BarterScheme()
+            new BarterScheme
             {
                 Count = _selectedCount,
                 Template = _searchResult.Id,
@@ -170,5 +181,30 @@
         Logger.Debug($"Updated Counted for {schemeToUpdate.Template} to {schemeToUpdate.Count}");
         
         schemeToUpdate.Count = scheme.Count;
+    }
+    
+    private async Task OpenMenuContent(DataGridRowClickEventArgs<BarterScheme> args)
+    {
+        _childCellContext = args.Item;
+        _selectedRowIndex = args.RowIndex;
+        
+        await _contextMenu?.OpenMenuAsync(args.MouseEventArgs)!;
+    }
+
+    private async Task RemoveItem()
+    {
+        var result = await DialogService.ShowMessageBox(
+            "Delete Item",
+            "Are you sure?",
+            yesText: "Yes", cancelText: "Cancel"
+        );
+        
+        if (_childCellContext is null || result is null) return;
+
+        var schemes = GetBarterSchemesForRow();
+        var item = schemes[_selectedRowIndex!.Value];
+        
+        schemes.Remove(item);
+        StateHasChanged();
     }
 }
