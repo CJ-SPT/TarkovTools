@@ -11,8 +11,8 @@ public record TarkovToolsMetadata : AbstractModMetadata, IModWebMetadata
     public override string Name { get; init; } = "Tarkov Tools Blazor";
     public override string Author { get; init; } = "Cj";
     public override List<string>? Contributors { get; init; }
-    public override Version Version { get; init; } = new("0.1.0");
-    public override Range SptVersion { get; init; } = new("~4.0");
+    public override Version Version { get; init; } = new(TarkovToolsMod.Version);
+    public override Range SptVersion { get; init; } = new(TarkovToolsMod.SptVersion);
     public override List<string>? Incompatibilities { get; init; }
     public override Dictionary<string, Range>? ModDependencies { get; init; }
     public override string? Url { get; init; }

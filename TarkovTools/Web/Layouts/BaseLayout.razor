@@ -16,6 +16,7 @@
     <MudLayout>
         <MudAppBar Color="Color.Dark" Fixed="true" Contextual="true" Elevation="4" Bottom="true">
             <MudIconButton Icon="@Icons.Custom.Brands.GitHub" Color="Color.Inherit" Href="https://github.com/CJ-SPT/TarkovTools"/>
+            <MudText Style="font-size: 12px">Version: @TarkovToolsMod.Version for SPT: @TarkovToolsMod.SptVersion</MudText>
         </MudAppBar>
 
         <MudDrawer Width="250px" @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Never" Elevation="5" Variant="@DrawerVariant.Mini" OpenMiniOnHover="true" Breakpoint="Breakpoint.None">

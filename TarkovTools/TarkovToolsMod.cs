@@ -12,6 +12,9 @@ public class TarkovToolsMod(
     SearchService searchService
     ) : IOnLoad
 {
+    public const string Version = "0.1.0";
+    public const string SptVersion = "~4.0";
+    
     public Task OnLoad()
     {
         try
