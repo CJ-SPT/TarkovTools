@@ -29,21 +29,14 @@ public class SearchService(
             return;
         }
         
-        logger.Info("[TarkovTools] Caching search indexes this might take a minute...");
-
         var dbItems = databaseService.GetTables().Templates.Items;
         
         var items = dbItems.Where(item => itemHelper.IsValidItem(item.Key));
-
-        var sw = Stopwatch.StartNew();
         
         foreach (var (id, _) in items)
         {
             _localizedItemNames[id] = GetLocalizedName(id);
         }
-        
-        logger.Info($"[TarkovTools] Caching {_localizedItemNames.Count} localized items for search indexing took {sw.ElapsedMilliseconds}ms");
-        sw.Restart();
         
         var parents = dbItems.Select(x => x.Value.Parent);
         
@@ -63,8 +56,6 @@ public class SearchService(
             
             _localizedItemParentNames[parent] = localizedParentName;
         }
-        
-        logger.Info($"[TarkovTools] Caching {_localizedItemParentNames.Count} localized parent items for search indexing took {sw.ElapsedMilliseconds}ms");
         
         _hydrated = true;
     }

@@ -92,12 +92,10 @@ public class PresetService(
     /// </summary>
     public void LoadPresets()
     {
-        logger.Info("[TarkovTools] Loading presets");
-        
         var directories =  Directory.GetDirectories(pathUtil.PresetPath);
         if (directories.Length == 0)
         {
-            logger.Warning("[TarkovTools] No presets found, consider creating or installing one to start taking advantage of the mods features");
+            logger.Warning("[TarkovTools] No presets found, consider creating or installing one. Mods features will be limited until you do so.");
             return;
         }
         
@@ -162,7 +160,40 @@ public class PresetService(
             Directory.CreateDirectory(Path.Combine(pathUtil.PresetPath, preset.Name));
         }
         
-        var json =  jsonUtil.Serialize(preset);
+        var json =  jsonUtil.Serialize(preset, true);
         File.WriteAllText(Path.Combine(pathUtil.PresetPath, preset.Name, "preset.json"), json);
+    }
+
+    public void DeletePreset(TarkovToolsPreset preset)
+    {
+        LoadedPresets.Remove(preset);
+        if (SelectedPreset?.Name == preset.Name)
+        {
+            SelectedPreset = null;
+        }
+        
+        var presetPath = Path.Combine(pathUtil.PresetPath, preset.Name);
+        if (Directory.Exists(presetPath))
+        {
+            Directory.Delete(presetPath, true);
+        }
+        
+        if (settingsService.Settings.SelectedPreset == preset.Name)
+        {
+            settingsService.Settings.SelectedPreset = string.Empty;
+            settingsService.SaveSettings();
+        }
+    }
+    
+    public bool DeletePreset(string name)
+    {
+        var preset = LoadedPresets.FirstOrDefault(x => x.Name == name);
+        if (preset is null)
+        {
+            return false;
+        }
+        
+        DeletePreset(preset);
+        return true;
     }
 }

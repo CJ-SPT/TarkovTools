@@ -1,0 +1,127 @@
+﻿@using TarkovTools.Web.Dialogs
+
+@inject ISnackbar Snackbar;
+@inject IDialogService DialogService;
+@inject PresetService PresetService;
+@inject SettingsService SettingsService;
+
+<MudSelect T="string"
+           Label="Presets"
+           Variant="Variant.Outlined"
+           Style="max-width: 350px; min-width: 250px; margin-right: 16px; justify-content: center"
+           OnClose="OnPresetSelected"
+           @bind-Value="_selectedPreset">
+    @foreach (var preset in LoadedPresets)
+    {
+        <MudSelectItem Value="@preset">@preset</MudSelectItem>
+    }
+</MudSelect>
+
+<MudButtonGroup Color="Color.Primary"
+                Variant="Variant.Outlined"
+                Style="min-height: 35px; max-height: 45px;"
+                OverrideStyles="false">
+    
+    <MudButton Color="Color.Success"
+               Style="font-size: 12px;"
+               OnClick="OnSavePreset"
+               Variant="Variant.Outlined">
+        Save Preset
+    </MudButton>
+    <MudButton Color="Color.Warning"
+               Style="font-size: 12px;"
+               OnClick="OnCreatePreset"
+               Variant="Variant.Outlined">
+        Create Preset
+    </MudButton>
+    <MudButton Color="Color.Secondary"
+               Style="font-size: 12px;"
+               OnClick="OnDeletePreset"
+               Variant="Variant.Outlined">
+        Delete Preset
+    </MudButton>
+</MudButtonGroup>
+
+@code {
+    private string _selectedPreset;
+
+    private List<string> LoadedPresets => PresetService.LoadedPresets.Select(preset => preset.Name).ToList();
+
+    protected override void OnInitialized()
+    {
+        _selectedPreset = PresetService.SelectedPreset?.Name ?? string.Empty;
+        base.OnInitialized();
+    }
+
+    private void OnPresetSelected()
+    {
+        if (!string.IsNullOrEmpty(_selectedPreset))
+        {
+            SettingsService.Settings.SelectedPreset = _selectedPreset;
+            SettingsService.SaveSettings();
+
+            Snackbar.Add($"`{_selectedPreset}` set as the active preset.", Severity.Success);
+        }
+    }
+
+    private void OnSavePreset()
+    {
+        if (PresetService.SelectedPreset is null)
+        {
+            Snackbar.Add("There is no selected preset.", Severity.Warning);
+            return;
+        }
+
+        PresetService.SavePreset(PresetService.SelectedPreset);
+        Snackbar.Add($"`{PresetService.SelectedPreset.Name}` has been saved.", Severity.Success);
+    }
+
+    private async Task OnCreatePreset()
+    {
+        var parameters = new DialogParameters<TextFieldDialog>
+        {
+            { x => x.Label, "Preset Name" }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            CloseOnEscapeKey = true
+        };
+
+        var dialog = await DialogService.ShowAsync<TextFieldDialog>("Create new preset", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            var textResult = result.Data?.ToString();
+            if (string.IsNullOrEmpty(textResult))
+            {
+                Snackbar.Add("Failed to create preset. Text field was blank", Severity.Error);
+                return;
+            }
+
+            PresetService.CreatePreset(textResult, true);
+            _selectedPreset = textResult;
+
+            // Use the result here
+            Snackbar.Add($"`{textResult}` created", Severity.Success);
+            StateHasChanged();
+        }
+    }
+
+    private void OnDeletePreset()
+    {
+        if (string.IsNullOrEmpty(_selectedPreset) || PresetService.SelectedPreset is null)
+        {
+            Snackbar.Add("No selected preset to delete", Severity.Warning);
+            return;
+        }
+
+        if (PresetService.DeletePreset(_selectedPreset))
+        {
+            Snackbar.Add($"Preset {_selectedPreset} deleted.", Severity.Warning);
+            _selectedPreset = string.Empty;
+        }
+    }
+}
