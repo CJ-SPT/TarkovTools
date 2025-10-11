@@ -5,6 +5,7 @@ using SPTarkov.Server.Core.Models.Common;
 using SPTarkov.Server.Core.Models.Utils;
 using SPTarkov.Server.Core.Services;
 using TarkovTools.Models;
+using LogLevel = SPTarkov.Server.Core.Models.Spt.Logging.LogLevel;
 
 namespace TarkovTools.Services;
 
@@ -56,16 +57,23 @@ public class SearchService(
                 if (parentItem != null)
                 {
                     _localizedItemParentNames[parentItem.Id] = parentItem.Name ?? parentItem.Id.ToString();
-                    logger.Debug($"Cached parent: {_localizedItemParentNames[parent]}");
+                    
+                    if (logger.IsLogEnabled(LogLevel.Debug)) 
+                        logger.Debug($"Cached parent: {_localizedItemParentNames[parent]}");
+                    
                     continue;
                 }
                 
-                logger.Debug("Failed to set parent");
+                if (logger.IsLogEnabled(LogLevel.Debug)) 
+                    logger.Debug("Failed to set parent");
+                
                 continue;
             }
             
             _localizedItemParentNames[parent] = localizedParentName;
-            logger.Debug($"Cached parent(localized): {_localizedItemParentNames[parent]}");
+            
+            if (logger.IsLogEnabled(LogLevel.Debug)) 
+                logger.Debug($"Cached parent(localized): {_localizedItemParentNames[parent]}");
         }
         
         logger.Info($"[TarkovTools] Caching {_localizedItemParentNames.Count} localized parent items for search indexing took {sw.ElapsedMilliseconds}ms");
