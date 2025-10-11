@@ -1,0 +1,57 @@
+﻿@using SPTarkov.Server.Core.Models.Common
+@using SPTarkov.Server.Core.Models.Eft.Common.Tables
+<MudPaper Elevation="3" Class="pa-4" Style="width: 700px; max-width: 90%;">
+    <MudText Typo="Typo.h6" Class="mb-3">Buy Configuration</MudText>
+    <MudGrid Spacing="1">
+        
+        <InteractableSearchableList
+            BreakPoint="6"
+            ShowAddButton="false"
+            HeaderText="Buy Category"
+            Items="ItemsBuyCategories.Select(x => x.ToString()).ToList()"
+            SearchType="SearchResultType.ItemParent"/>
+        
+        <InteractableSearchableList
+            BreakPoint="6"
+            ShowAddButton="false"
+            HeaderText="Buy Specified Items"
+            Items="ItemsBuyIdList.Select(x => x.ToString()).ToList()"
+            SearchType="SearchResultType.Item"/>
+        
+    </MudGrid>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public required TraderEditor TraderEditor { get; init; }
+    
+    private string _buyCategoryTextField = string.Empty;
+    private string _buyItemTextField = string.Empty;
+
+    private TraderBase? TraderBase => TraderEditor.SelectedTrader?.Base;
+    
+    private HashSet<MongoId> ItemsBuyCategories => TraderBase?.ItemsBuy?.Category ?? [];
+    private HashSet<MongoId> ItemsBuyIdList => TraderBase?.ItemsBuy?.IdList ?? [];
+    
+    private void AddBuyCategory()
+    {
+        if (!string.IsNullOrWhiteSpace(_buyCategoryTextField))
+        {
+            ItemsBuyCategories.Add(_buyCategoryTextField);
+            _buyCategoryTextField = string.Empty;
+            StateHasChanged();
+            Console.WriteLine($"Added category. Count: {ItemsBuyCategories.Count}");
+        }
+    }
+    
+    private void AddSpecifiedItem()
+    {
+        if (!string.IsNullOrWhiteSpace(_buyItemTextField))
+        {
+            ItemsBuyIdList.Add(_buyItemTextField);
+            _buyItemTextField = string.Empty;
+            StateHasChanged();
+            Console.WriteLine($"Added specified item. Count: {ItemsBuyIdList.Count}");
+        }
+    }
+}

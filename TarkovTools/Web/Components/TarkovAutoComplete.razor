@@ -1,0 +1,118 @@
+﻿@using SPTarkov.Server.Core.Models.Utils
+@using global::TarkovTools.Models
+@using global::TarkovTools.Services
+
+@inject SearchService SearchService;
+@inject ISptLogger<TarkovTools> Logger;
+
+<MudAutocomplete T="SearchResult"
+                 Value="SelectedResult"
+                 Placeholder="@(GetPlaceHolderText())"
+                 SearchFunc="GetSearchFunc()"
+                 AnchorOrigin="Origin.TopCenter"
+                 TransformOrigin="Origin.BottomCenter"
+                 ToStringFunc="@(s=> s is null ? string.Empty : s.LocalizedName)"
+                 Clearable="true"
+                 OnClearButtonClick="OnCleared"
+                 Variant="Variant.Outlined"
+                 DropdownSettings="_dropdownSettings"
+                 Class="flex-grow-1"
+                 ValueChanged="OnValueChanged"/>
+
+@code {
+    /// <summary>
+    /// What type of results does this search yield?
+    /// </summary>
+    [Parameter]
+    public required SearchResultType SearchType { get; init; }
+    
+    /// <summary>
+    /// Event that fires when a search result is selected
+    /// </summary>
+    [Parameter]
+    public EventCallback<SearchResult?> OnResultSelected { get; set; }
+    
+    /// <summary>
+    /// Event that fires when a search result is cleared
+    /// </summary>
+    [Parameter]
+    public EventCallback<bool> OnSearchCleared { get; set; }
+    
+    /// <summary>
+    /// The current selected search result
+    /// </summary>
+    [Parameter]
+    public SearchResult? SelectedResult { get; set; }
+    
+    /// <summary>
+    /// Does the search reset on click?
+    /// </summary>
+    [Parameter] 
+    public bool ResetOnClicked { get; set; } = true;
+    
+    private DropdownSettings _dropdownSettings;
+
+    protected override void OnInitialized()
+    {
+        _dropdownSettings = new DropdownSettings()
+        {
+            OverflowBehavior = OverflowBehavior.FlipAlways,
+        };
+        
+        base.OnInitialized();
+    }
+
+    private async Task OnValueChanged(SearchResult? value)
+    {
+        Logger.Debug($"AutoComplete Selected {value?.LocalizedName ?? "Null"}");
+        
+        SelectedResult = value;
+        await OnResultSelected.InvokeAsync(value);
+
+        if (ResetOnClicked)
+        {
+            SelectedResult = null;
+        }
+    }
+
+    private async Task OnCleared()
+    {
+        SelectedResult = null;
+
+        Logger.Debug("Autocomplete Cleared");
+        
+        await OnSearchCleared.InvokeAsync();
+    }
+    
+    private Func<string?, CancellationToken, Task<IEnumerable<SearchResult>>?>? GetSearchFunc()
+    {
+        switch (SearchType)
+        {
+            case SearchResultType.Item:
+                return SearchService.SearchItems!;
+            case SearchResultType.ItemParent:
+                return SearchService.SearchItemParents!;
+            case SearchResultType.Trader:
+                break;
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
+
+        return null;
+    }
+
+    private string GetPlaceHolderText()
+    {
+        switch (SearchType)
+        {
+            case SearchResultType.Item:
+                return "Search Items";
+            case SearchResultType.ItemParent:
+                return "Search Parents";
+            case SearchResultType.Trader:
+                return "Search Traders";
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
+    }
+}

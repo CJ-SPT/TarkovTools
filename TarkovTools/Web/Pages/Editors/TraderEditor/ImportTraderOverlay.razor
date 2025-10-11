@@ -1,0 +1,187 @@
+﻿@using SPTarkov.Server.Core.Models.Eft.Common.Tables
+@using SPTarkov.Server.Core.Models.Utils
+@using SPTarkov.Server.Core.Utils
+
+@inject ISptLogger<TarkovTools> Logger;
+@inject FileUtil FileUtil;
+@inject JsonUtil JsonUtil;
+@inject IDialogService DialogService;
+
+<MudOverlay @bind-Visible="Show"
+            DarkBackground="true">
+
+    <MudPaper Style="width: 800px">
+        <MudStepper CenterLabels
+                    OnPreviewInteraction="ControlStepCompletion">
+            
+            <MudStep Title="Import base.json"
+                     Class="center"
+                     HasError="@(_baseJsonImported == false)" 
+                     bind-Completed="_baseJsonImported">
+                <MudContainer Class="d-flex justify-center my-4">
+                    <MudFileUpload T="IBrowserFile"
+                                   Accept=".json"
+                                   MaximumFileCount="1"
+                                   FilesChanged="ImportTraderBase">
+                        <ActivatorContent>
+                            <MudButton Variant="Variant.Filled"
+                                       Color="MudBlazor.Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.CloudUpload">
+                                Select base.json
+                            </MudButton>
+                        </ActivatorContent>
+                    </MudFileUpload>
+                </MudContainer>
+            </MudStep>
+
+            <MudStep Title="Import assort.json"
+                     Class="center"
+                     HasError="@(_assortJsonImported == false)" 
+                     bind-Completed="_assortJsonImported">
+                <MudContainer Class="d-flex justify-center my-4">
+                    <MudFileUpload T="IBrowserFile"
+                                   Accept=".json"
+                                   MaximumFileCount="1"
+                                   FilesChanged="ImportTraderAssort">
+                        <ActivatorContent>
+                            <MudButton Variant="Variant.Filled"
+                                       Color="MudBlazor.Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.CloudUpload">
+                                Select assort.json
+                            </MudButton>
+                        </ActivatorContent>
+                    </MudFileUpload>
+                </MudContainer>
+            </MudStep>
+        </MudStepper>
+    </MudPaper>
+
+
+</MudOverlay>
+
+@code {
+    [Parameter] 
+    public required TraderEditor TraderEditor { get; set; }
+    
+    [Parameter]
+    public required TraderViewListPaper TraderViewListPaper { get; set; }
+    
+    [Parameter]
+    public required bool Show { get; set; }
+
+    private int _currentStepIndex;
+
+    private bool _baseJsonImported;
+    private bool _assortJsonImported;
+    
+    protected override void OnInitialized()
+    {
+        TraderEditor.SelectedTrader = new Trader()
+        {
+            Assort = new TraderAssort(),
+            Base = new TraderBase(),
+            Dialogue = [],
+            QuestAssort = [],
+            Services = [],
+            Suits = []
+        };
+        
+        base.OnInitialized();
+    }
+
+    private async Task ControlStepCompletion(StepperInteractionEventArgs arg)
+    {
+        switch (arg.StepIndex) {
+            case 0:
+                if (!_baseJsonImported) 
+                {
+                    await DialogService.ShowMessageBox("Error", "You have not imported a base.json for this trader");
+                    arg.Cancel = true;
+                }
+                break;
+            case 1:
+                if (!_assortJsonImported) 
+                {
+                    await DialogService.ShowMessageBox("Error", "You have not imported an assort.json for this trader");
+                    arg.Cancel = true;
+                    break;
+                }
+                
+                Show = false;
+                TraderViewListPaper.ShowTraderImportOverlay = false;
+                
+                TraderEditor.InvokeTraderChanged();
+                Logger.Debug("Import trader finished");
+                StateHasChanged();
+                break;
+        }
+    }
+
+    private async Task ImportTraderBase(IBrowserFile? file)
+    {
+        if (file is null)
+        {
+            Logger.Error("File null during import of base.json");
+            return;
+        }
+        
+        try
+        {
+            var text = await FileUtil.ReadFileAsync(file.Name);
+            var baseJson = JsonUtil.Deserialize<TraderBase>(text);
+
+            if (baseJson is null)
+            {
+                await DialogService.ShowMessageBox("Error", $"Could not deserialize: {file.Name} as TraderBase");
+                return;
+            }
+            
+            TraderEditor.SelectedTrader = new Trader()
+            {
+                Assort = new TraderAssort(),
+                Base = baseJson,
+                Dialogue = [],
+                QuestAssort = [],
+                Services = [],
+                Suits = []
+            };
+            
+            _baseJsonImported = true;
+        }
+        catch (Exception e)
+        {
+            Logger.Error(e.Message);
+            throw;
+        }
+    }
+    
+    private async Task ImportTraderAssort(IBrowserFile? file)
+    {
+        if (file is null)
+        {
+            Logger.Error("File null during import of assort.json");
+            return;
+        }
+        
+        try
+        {
+            var text = await FileUtil.ReadFileAsync(file.Name);
+            var assortJson = JsonUtil.Deserialize<TraderAssort>(text);
+            
+            if (assortJson is null)
+            {
+                await DialogService.ShowMessageBox("Error", $"Could not deserialize: {file.Name} as TraderAssort");
+                return;
+            }
+            
+            TraderEditor.SelectedTrader!.Assort = assortJson;
+            
+            _assortJsonImported = true;
+        }
+        catch (Exception e)
+        {
+            Logger.Error(e.Message);
+            throw;
+        }
+    }
+}

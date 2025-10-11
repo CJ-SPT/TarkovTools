@@ -1,0 +1,61 @@
+﻿@using SPTarkov.Server.Core.Models.Common
+@using SPTarkov.Server.Core.Models.Eft.Common.Tables
+
+<MudPaper Elevation="3" Class="pa-4" Style="max-width: 90%;">
+    <MudGrid Spacing="1">
+        
+        <MudItem xs="5" sm="5" md="5">
+            <MudText Typo="Typo.h6" Class="mb-3">Prohibited Transferable</MudText>
+        </MudItem>
+        
+        <MudDivider/>
+        
+        <InteractableSearchableList
+            HeaderText="Prohibited Transferable Items"
+            ShowAddButton="false"
+            Items="ProhibitedTransferableCategories.Select(x => x.ToString()).ToList()"
+            SearchType="SearchResultType.ItemParent"/>
+
+        <InteractableSearchableList
+            HeaderText="Prohibited Transferable Items"
+            ShowAddButton="false"
+            Items="ProhibitedTransferableItems.Select(x => x.ToString()).ToList()"
+            SearchType="SearchResultType.Item"/>
+
+    </MudGrid>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public required TraderEditor TraderEditor { get; init; }
+    
+    private string _prohibitedTransferableCategory = string.Empty;
+    private string _prohibitedTransferableItem = string.Empty;
+
+    private TraderBase? TraderBase => TraderEditor.SelectedTrader?.Base;
+    
+    private HashSet<MongoId> ProhibitedTransferableCategories => TraderBase?.ProhibitedTransferableItems?.Category ?? [];
+    private HashSet<MongoId> ProhibitedTransferableItems => TraderBase?.ProhibitedTransferableItems?.IdList ?? [];
+    
+    private void AddProhibitedTransferableCategory()
+    {
+        if (!string.IsNullOrWhiteSpace(_prohibitedTransferableCategory))
+        {
+            ProhibitedTransferableCategories.Add(_prohibitedTransferableCategory);
+            _prohibitedTransferableCategory = string.Empty;
+            StateHasChanged();
+            Console.WriteLine($"Added transferable category. Count: {ProhibitedTransferableCategories.Count}");
+        }
+    }
+    
+    private void AddProhibitedTransferableItem()
+    {
+        if (!string.IsNullOrWhiteSpace(_prohibitedTransferableItem))
+        {
+            ProhibitedTransferableItems.Add(_prohibitedTransferableItem);
+            _prohibitedTransferableItem = string.Empty;
+            StateHasChanged();
+            Console.WriteLine($"Added transferable item. Count: {ProhibitedTransferableItems.Count}");
+        }
+    }
+}

@@ -1,0 +1,200 @@
+﻿@using SPTarkov.Server.Core.Models.Common
+@using SPTarkov.Server.Core.Models.Eft.Common.Tables
+@using SPTarkov.Server.Core.Models.Utils
+@using SPTarkov.Server.Core.Services
+@using SPTarkov.Server.Core.Utils
+@using global::TarkovTools.Utils
+@using Path = System.IO.Path
+
+@inject DatabaseService Database;
+@inject SearchService SearchService;
+@inject LocaleService LocaleService;
+
+@inject ISptLogger<TarkovTools> Logger;
+@inject IDialogService DialogueService;
+@inject PathUtil PathUtil;
+@inject FileUtil FileUtil;
+@inject JsonUtil JsonUtil;
+
+<MudPaper Elevation="2" Class="pa-3" Style="margin-left: 20px; height: calc(100vh - 100px); position: sticky; top: 14px; overflow-y: auto; min-width: 240px;">
+    <MudText Typo="Typo.subtitle1">Trader Templates</MudText>
+    <MudList Dense="true" Class="mt-2" T="string">
+        @foreach (var trader in TraderEditor.GetTraders())
+        {
+            var fileName = Path.GetFileNameWithoutExtension(trader.Value.Base.Avatar);
+            var path = $"/tarkovtools/images/traders/{fileName}.png";
+            
+            Console.WriteLine(path);
+            <MudListItem Text="@SearchService.GetLocalizedNickname(trader.Key)" 
+                         OnClick="@(() => SelectTrader(trader.Key))">
+                <AvatarContent>
+                    <MudAvatar>
+                        <MudImage Src="@path"/>
+                    </MudAvatar>
+                </AvatarContent>
+            </MudListItem>
+        }
+    </MudList>
+    
+    <MudDivider Class="my-2"/>
+    
+    <MudButtonGroup Color="MudBlazor.Color.Primary">
+        <MudButton Variant="Variant.Text" FullWidth="true"
+                   Color="MudBlazor.Color.Primary" OnClick="@(() => CreateNewTrader())">
+            Create New Trader
+        </MudButton>
+        <MudButton Variant="Variant.Text" FullWidth="true"
+                   Color="MudBlazor.Color.Primary" OnClick="@(() => CreateNewTraderFromTemplate())">
+            Create New From Template
+        </MudButton>
+    </MudButtonGroup>
+    
+    <MudDivider Class="my-2"/>
+
+    <MudButton Variant="Variant.Text" FullWidth="true"
+               Color="MudBlazor.Color.Primary" OnClick="@(() => LoadTrader())">
+        Load Trader
+    </MudButton>
+
+    <MudButton Variant="Variant.Text" FullWidth="true"
+               Disabled="TraderEditor.SelectedTrader is null"
+               Color="MudBlazor.Color.Primary" OnClick="@(() => ExportTrader())">
+        Export Trader
+    </MudButton>
+</MudPaper>
+
+<ImportTraderOverlay Show="ShowTraderImportOverlay"
+                     TraderViewListPaper="this"
+                     TraderEditor="TraderEditor"/>
+
+@code {
+    [Parameter]
+    public required TraderEditor TraderEditor { get; init; }
+    
+    [Parameter]
+    public required Action RefreshAction { get; init; }
+    
+    [Inject] 
+    public required IDialogService DialogService { get; set; }
+
+    private Trader? _selectedTrader;
+
+    public bool ShowTraderImportOverlay { get; set; }
+    
+    private async Task SelectTrader(MongoId id)
+    {
+        if (!TraderEditor.GetTraders().TryGetValue(id, out var trader))
+        {
+            Logger.Debug($"Could not find tid `{id}` in database");
+            await CreateNewTrader();
+            return;
+        }
+
+        _selectedTrader = trader;
+        StateHasChanged();
+    }
+
+    private async Task CreateNewTraderFromTemplate()
+    {
+        if (_selectedTrader is null)
+        {
+            _ = await DialogService.ShowMessageBox(
+                "No Template Selected", 
+                "You have not selected a trader template.",
+                yesText:"Ok");
+            return;
+        }
+
+        var name = SearchService.GetLocalizedNickname(_selectedTrader!.Base.Id);
+        var result = await DialogService.ShowMessageBox(
+            "Create From Template", 
+            $"Use {name} as a template? Any unsaved progress will be lost.",
+            yesText:"Yes", noText: "Cancel");
+
+        if (result is not null && (bool)result)
+        {
+            var traderText = JsonUtil.Serialize(_selectedTrader);
+            TraderEditor.SelectedTrader = JsonUtil.Deserialize<Trader>(traderText);
+            TraderEditor.SelectedTrader!.Base.Id = new MongoId();
+        
+            RefreshAction.Invoke();
+            TraderEditor.InvokeTraderChanged();
+        }
+    }
+    
+    private async Task CreateNewTrader()
+    {
+        var result = await DialogService.ShowMessageBox(
+            "Create New Trader", 
+            "Are you sure? Any unsaved progress will be lost.",
+            yesText:"Create", cancelText:"Cancel");
+        
+        if (result is not null && (bool)result)
+        {
+            TraderEditor.SelectedTrader = new Trader
+            {
+                Assort = new TraderAssort
+                {
+                    Items = [],
+                    BarterScheme = [],
+                    LoyalLevelItems = []
+                },
+                Base = new TraderBase
+                {
+                    Id = new MongoId()
+                },
+                Dialogue = [],
+                QuestAssort = [],
+                Suits = [],
+                Services = []
+            };
+            
+            TraderEditor.InvokeTraderChanged();
+            StateHasChanged();
+        }
+    }
+    
+    private async Task LoadTrader()
+    {
+        var result = await DialogService.ShowMessageBox(
+            "Import Trader", 
+            "Are you sure? Any unsaved progress will be lost.",
+            yesText:"Import", cancelText:"Cancel");
+
+        if (result is null || !(bool)result) return;
+        
+        ShowTraderImportOverlay = !ShowTraderImportOverlay;
+    }
+
+    private async Task ExportTrader()
+    {
+        //var directory = await DialogueService.PickDirectory("Choose path");
+        
+        //await CreateTraderFilesForExport(directory);
+    }
+
+    private async Task CreateTraderFilesForExport(string path)
+    {
+        if (TraderEditor.SelectedTrader?.Base is null)
+        {
+            Logger.Error("Trader base was null during export");
+            return;
+        }
+
+        var baseText = JsonUtil.Serialize(TraderEditor.SelectedTrader.Base, true);
+
+        if (TraderEditor.SelectedTrader?.Assort is null)
+        {
+            Logger.Error("Trader Assort was null during export");
+            return;
+        }
+
+        var assortText = JsonUtil.Serialize(TraderEditor.SelectedTrader.Assort, true);
+
+        var basePath = Path.Combine(path, "base.json");
+        var assortPath = Path.Combine(path, "assort.json");
+
+        await FileUtil.WriteFileAsync(basePath, baseText!);
+        await FileUtil.WriteFileAsync(assortPath, assortText!);
+    }
+}

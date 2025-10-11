@@ -1,0 +1,54 @@
+﻿@using SPTarkov.Server.Core.Models.Common
+
+<MudPaper Elevation="3" Class="pa-4" Style="width: 700px; max-width: 90%;">
+    <MudText Typo="Typo.h6" Class="mb-3">Buy Prohibited Configuration</MudText>
+    <MudGrid Spacing="1">
+        
+        <InteractableSearchableList
+            BreakPoint="6"
+            ShowAddButton="false"
+            HeaderText="Prohibited Buy Categories"
+            Items="ItemsBuyProhibitedCategories.Select(x => x.ToString()).ToList()"
+            SearchType="SearchResultType.ItemParent"/>
+        
+        <InteractableSearchableList
+            BreakPoint="6"
+            ShowAddButton="false"
+            HeaderText="Prohibited Specified Items"
+            Items="ItemsBuyProhibitedIdList.Select(x => x.ToString()).ToList()"
+            SearchType="SearchResultType.Item"/>
+        
+    </MudGrid>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public required TraderEditor TraderEditor { get; init; }
+    
+    private string _itemsBuyProhibitedCategory = string.Empty;
+    private string _itemsBuyProhibitedId = string.Empty;
+    private HashSet<MongoId> ItemsBuyProhibitedCategories => TraderEditor.SelectedTrader?.Base?.ItemsBuyProhibited?.Category ?? [];
+    private HashSet<MongoId> ItemsBuyProhibitedIdList => TraderEditor.SelectedTrader?.Base?.ItemsBuyProhibited?.IdList ?? [];
+    
+    private void AddProhibitedBuyCategory()
+    {
+        if (!string.IsNullOrWhiteSpace(_itemsBuyProhibitedCategory) && !ItemsBuyProhibitedCategories.Contains(_itemsBuyProhibitedCategory))
+        {
+            ItemsBuyProhibitedCategories.Add(_itemsBuyProhibitedCategory);
+            _itemsBuyProhibitedCategory = string.Empty;
+            StateHasChanged();
+            Console.WriteLine($"Added prohibited category. Count: {ItemsBuyProhibitedCategories.Count}");
+        }
+    }
+    
+    private void AddProhibitedSpecifiedItem()
+    {
+        if (!string.IsNullOrWhiteSpace(_itemsBuyProhibitedId) && !ItemsBuyProhibitedIdList.Contains(_itemsBuyProhibitedId))
+        {
+            ItemsBuyProhibitedIdList.Add(_itemsBuyProhibitedId);
+            _itemsBuyProhibitedId = string.Empty;
+            StateHasChanged();
+            Console.WriteLine($"Added prohibited item. Count: {ItemsBuyProhibitedIdList.Count}");
+        }
+    }
+}

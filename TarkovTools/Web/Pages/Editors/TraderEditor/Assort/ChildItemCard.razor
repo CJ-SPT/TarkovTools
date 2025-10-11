@@ -1,0 +1,184 @@
+﻿@using SPTarkov.Server.Core.Models.Common
+@using SPTarkov.Server.Core.Models.Eft.Common.Tables
+@using SPTarkov.Server.Core.Models.Utils
+@using SPTarkov.Server.Core.Services
+@using Color = MudBlazor.Color
+
+@inject ISptLogger<TarkovTools> Logger;
+@inject SearchService SearchService;
+@inject DatabaseService Database;
+@inject IDialogService DialogService;
+
+
+<MudCard>
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudGrid Spacing="1">
+                <MudItem xs="8" sm="8" md="8">
+                    <MudText Typo="Typo.h6">Children of @AssortCellContext.Item.LocalizedName</MudText>
+                </MudItem>
+            </MudGrid>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent>
+        <MudGrid Spacing="1" Justify="Justify.FlexStart">
+            <MudItem xs="12" sm="12" md="12">
+                <MudDataGrid T="AssortGridDataModel"
+                             Items="@(AssortCellContext.Item.ChildItemData)"
+                             ReadOnly="false"
+                             Striped="true"
+                             Bordered="true"
+                             Dense="true"
+                             EditMode="DataGridEditMode.Cell"
+                             RowContextMenuClick="OpenMenuContent"
+                             CommittedItemChanges="OnItemChanged">
+
+                    <Columns>
+                        <HierarchyColumn T="AssortGridDataModel" Hidden="false"/>
+                        <PropertyColumn Property="x => x.LocalizedName" Title="Localized Name" Editable="false"/>
+                        <PropertyColumn Property="x => x.TemplateId" Title="Template Id" Editable="false"/>
+                        <PropertyColumn Property="x => x.Id" Title="Id" Editable="false"/>
+                        <PropertyColumn Property="x => x.ParentId" Title="Parent Id" Editable="false"/>
+                        <PropertyColumn Property="x => x.SlotId" Title="Slot Id" Editable="false"/>
+                    </Columns>
+                </MudDataGrid>
+
+                <MudMenu PositionAtCursor="true" @ref="_contextMenu" id="_childItemContextMenu">
+                    <MudMenuItem Icon="@Icons.Material.Filled.Delete" OnClick="RemoveItem">
+                        Delete
+                    </MudMenuItem>
+                </MudMenu>
+                
+            </MudItem>
+
+            <MudItem xs="3" sm="3" md="3" Class="ma-1" Style="display: flex; justify-content: center; align-items: center;">
+                <TarkovAutoComplete SearchType="SearchResultType.Item" OnResultSelected="OnSearchResultSelected"/>
+            </MudItem>
+
+            <MudItem xs="3" sm="3" md="3" Class="ma-1" Style="display: flex; justify-content: center; align-items: center;">
+                <MudSelect T="string"
+                           @bind-Value="_parentSelectValue"
+                           Variant="Variant.Outlined"
+                           Clearable="true"
+                           Placeholder="Parent">
+                    
+                    @foreach (var parent in GetValidRootItems())
+                    {
+                        <MudSelectItem Value="parent">@parent</MudSelectItem>
+                    }
+                    
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="3" sm="3" md="3" Class="ma-1" Style="display: flex; justify-content: center; align-items: center;">
+                <MudTextField 
+                    @bind-Value="_slotIdValue" 
+                    Placeholder="Slot Id"
+                    Variant="Variant.Outlined"></MudTextField>
+            </MudItem>
+
+            <MudItem xs="1" sm="1" md="1" Class="ma-1" Style="display: flex; justify-content: center; align-items: center;">
+                <MudButton StartIcon="@Icons.Material.Filled.AddBox"
+                           IconColor="Color.Success"
+                           IconSize="Size.Large"
+                           Variant="Variant.Outlined"
+                           OnClick="AddChildItem">
+                    Add Child
+                </MudButton>
+            </MudItem>
+            
+        </MudGrid>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter] public required AssortDataGrid DataGrid { get; set; }
+
+    [Parameter] public required CellContext<AssortGridDataModel> AssortCellContext { get; set; }
+
+    private AssortGridDataModel? _childCellContext;
+    private MudMenu? _contextMenu = null!;
+    private SearchResult? _itemSearchResult = null!;
+
+    private string _parentSelectValue = string.Empty;
+    private string _slotIdValue = string.Empty;
+    
+    private void OnItemChanged(AssortGridDataModel gridData)
+    {
+        
+    }
+    
+    private async Task OpenMenuContent(DataGridRowClickEventArgs<AssortGridDataModel> args)
+    {
+        _childCellContext = args.Item;
+        await _contextMenu?.OpenMenuAsync(args.MouseEventArgs)!;
+    }
+
+    private async Task RemoveItem()
+    {
+        var result = await DialogService.ShowMessageBox(
+            "Delete Item",
+            "Are you sure?",
+            yesText: "Yes", cancelText: "Cancel"
+        );
+        
+        if (_childCellContext is null || result is null) return;
+
+        var item = DataGrid.AssortItems.FirstOrDefault(i => i.Id == _childCellContext.Id);
+        
+        if (item is null || item.ParentId == "hideout") return;
+
+        DataGrid.AssortItems.Remove(item);
+        var gridItem = AssortCellContext.Item.ChildItemData.First(c => c.Id == item.Id);
+
+        AssortCellContext.Item.ChildItemData.Remove(gridItem);
+        DataGrid.AssortItems.Remove(item);
+        
+        StateHasChanged();
+    }
+    
+    private void OnSearchResultSelected(SearchResult? result)
+    {
+        _itemSearchResult = result;
+    }
+
+    private List<string> GetValidRootItems()
+    {
+        var result = new List<string>
+        {
+            AssortCellContext.Item.Id,
+        };
+        
+        result.AddRange(AssortCellContext.Item.ChildItemData.Select(s => s.Id));
+        
+        return result;
+    }
+
+    private void AddChildItem()
+    {
+        if (_itemSearchResult is null) return;
+        
+        var item = new Item()
+        {
+            Id = new MongoId(),
+            Template = _itemSearchResult.Id,
+            ParentId = _parentSelectValue,
+            SlotId = _slotIdValue
+        };
+
+        var assortGridData = new AssortGridDataModel
+        {
+            Id = item.Id,
+            TemplateId = item.Template,
+            LocalizedName = SearchService.GetLocalizedName(item.Template),
+            ParentId = item.ParentId,
+            SlotId = item.SlotId,
+            IsChild = true
+        };
+        
+        AssortCellContext.Item.ChildItemData.Add(assortGridData);
+        DataGrid.AssortItems.Add(item);
+        
+        StateHasChanged();
+    }
+}

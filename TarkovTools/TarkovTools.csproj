@@ -1,0 +1,64 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <Authors>Cj</Authors>
+        <Copyright>Copyright (c) Cj 2025</Copyright>
+        <OutputType>Library</OutputType>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="MudBlazor" Version="8.13.0" />
+        <PackageReference Include="SPTarkov.DI" Version="4.0.0-pre.20251007.1604" />
+        <PackageReference Include="SPTarkov.Server.Core" Version="4.0.0-pre.20251007.1604" />
+        <PackageReference Include="SPTarkov.Server.Web" Version="4.0.0-pre.20251007.1604" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <AdditionalFiles Include="Web\Components\NavMenu.razor" />
+      <AdditionalFiles Include="Web\Layouts\BaseLayout.razor" />
+      <AdditionalFiles Include="Web\Pages\Home.razor" />
+      <AdditionalFiles Include="Web\Pages\Misc\MongoIdGenerator.razor" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <_ContentIncludedByDefault Remove="Web\Pages\Editors\TraderEditor\TraderEditor\Commerce\TraderBuyPaper.razor" />
+      <_ContentIncludedByDefault Remove="Web\Pages\Editors\TraderEditor\TraderEditor\Commerce\TraderBuyProhibitedPaper.razor" />
+      <_ContentIncludedByDefault Remove="Web\Pages\Editors\TraderEditor\TraderEditor\Commerce\TraderSellCategoryPaper.razor" />
+      <_ContentIncludedByDefault Remove="Web\Pages\Editors\TraderEditor\TraderEditor\General\TraderInformationPaper.razor" />
+      <_ContentIncludedByDefault Remove="Web\Pages\Editors\TraderEditor\TraderEditor\General\TraderInsurancePaper.razor" />
+      <_ContentIncludedByDefault Remove="Web\Pages\Editors\TraderEditor\TraderEditor\General\TraderLoyaltyPaper.razor" />
+      <_ContentIncludedByDefault Remove="Web\Pages\Editors\TraderEditor\TraderEditor\General\TraderProhibitedTransferablePaper.razor" />
+      <_ContentIncludedByDefault Remove="Web\Pages\Editors\TraderEditor\TraderEditor\General\TraderRepairPaper.razor" />
+      <_ContentIncludedByDefault Remove="Web\Pages\Editors\TraderEditor\TraderEditor\TabPanels\CommerceTabPage.razor" />
+      <_ContentIncludedByDefault Remove="Web\Pages\Editors\TraderEditor\TraderEditor\TabPanels\GeneralTabPage.razor" />
+    </ItemGroup>
+
+    <PropertyGroup>
+        <!-- $(SolutionDir)..\..\SPT\user\mods -->
+        <!-- G:\Development\SPT\server-csharp\SPTarkov.Server\bin\Debug\net9.0\user\mods -->
+        <ServerModDir Condition = " $(ServerModDir) == '' ">G:\Development\SPT\server-csharp\SPTarkov.Server\bin\Debug\net9.0\user\mods</ServerModDir>
+    </PropertyGroup>
+    
+    <Target Name="CopyToServer" AfterTargets="PostBuildEvent">
+
+        <ItemGroup>
+            <OutputDLL Include="$(ProjectDir)$(OutDir)$(TargetName).dll" />
+            <WebAssets Include="$(ProjectDir)wwwroot\**\*.*" />
+        </ItemGroup>
+
+        <!-- Copies the output dll -->
+        <Copy 
+                SourceFiles="@(OutputDLL);" 
+                DestinationFolder="$(ServerModDir)\TarkovTools\" 
+        />
+        <!-- Copy the wwwroot folder -->
+        <Copy
+                SourceFiles="@(WebAssets)"
+                DestinationFolder="$(ServerModDir)\TarkovTools\wwwroot\%(RecursiveDir)"
+        />
+        
+    </Target>
+</Project>

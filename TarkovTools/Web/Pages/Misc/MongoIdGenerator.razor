@@ -1,0 +1,48 @@
+﻿@page "/tarkovtools/MongoIdGenerator"
+@layout BaseLayout;
+
+@inject ISnackbar Snackbar
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-4">
+    <MudPaper Elevation="2" Class="pa-4" Style="min-width: 400px">
+        <MudText Typo="Typo.h5" Align="Align.Center" Class="mb-4">MongoDB ObjectId Generator</MudText>
+        
+        <MudGrid>
+            <MudItem xs="12" sm="6">
+                <MudGrid>
+                    <MudItem xs="8">
+                        <MudNumericField @bind-Value="_massGenerateCount" 
+                                         Min="1" 
+                                         Max="1000" 
+                                         Immediate="true"
+                                         Label="Number of IDs"
+                                         Class="mb-4"/>
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudButton Variant="Variant.Filled" 
+                                   Color="Color.Primary" 
+                                   FullWidth="true"
+                                   OnClick="GenerateMultipleIds"
+                                   Style="min-width: 300px"
+                                   Class="mb-4">
+                            Generate
+                        </MudButton>
+                    </MudItem>
+                </MudGrid>
+            </MudItem>
+        </MudGrid>
+
+        <MudList T="string" Dense="true" Style="max-height: 400px; overflow-y: auto;">
+            @foreach (var id in _generatedIds)
+            {
+                <MudListItem Style="@(_copiedIds.Contains(id) ? "background-color: #941004;" : "")">
+                    <MudText>@id</MudText>
+                    <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" 
+                                   Size="Size.Small"
+                                   OnClick="@(() => CopyToClipboard(id))"
+                                   Color="Color.Primary"/>
+                </MudListItem>
+            }
+        </MudList>
+    </MudPaper>
+</MudContainer>

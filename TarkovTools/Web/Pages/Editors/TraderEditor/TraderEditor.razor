@@ -1,0 +1,34 @@
+﻿@page "/tarkovtools/TraderEditor"
+@layout BaseLayout;
+
+@using SPTarkov.Server.Core.Services
+@using global::TarkovTools.Web.Pages.Editors.TraderEditor.Assort
+@using global::TarkovTools.Web.Pages.Editors.TraderEditor.TabPanels
+
+@inject DatabaseService DatabaseService
+
+<MudGrid Spacing="1" Style="margin-top: 5px; margin-bottom: 65px;">
+    <MudItem xs="2" sm="2" md="2">
+        <!-- Sidebar List -->
+        <TraderViewListPaper TraderEditor="this" RefreshAction="StateHasChanged"/>
+    </MudItem>
+
+    <MudItem xs="10" sm="10" md="10">
+        <MudTabs Elevation="1" Rounded="true" Centered="true" Class="mr-4 ml-2">
+            <MudTabPanel Text="General" Class="pa-2">
+                <GeneralTabPage TraderEditor="this"/>
+            </MudTabPanel>
+            
+            <MudTabPanel Text="Commerce" Class="pa-2">
+                <CommerceTabPage TraderEditor="this"/>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Assort" Class="pa-2">
+                <AssortPaper TraderEditor="this"/>
+            </MudTabPanel>
+        </MudTabs>
+    </MudItem>
+</MudGrid>
+
+@code {
+}

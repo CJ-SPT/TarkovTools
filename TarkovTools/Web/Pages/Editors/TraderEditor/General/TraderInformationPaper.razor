@@ -1,0 +1,50 @@
+﻿@using SPTarkov.Server.Core.Models.Eft.Common.Tables
+<MudPaper Elevation="3" Class="pa-4 mb-4" Style="max-width: 90%;">
+    <MudText Typo="Typo.h6" Class="mb-3 text-center">Trader Information</MudText>
+    <MudGrid Spacing="1">
+        <!-- Left Column -->
+        <MudItem xs="12" sm="6" Class="px-1">
+            <MudTextField T="string" Label="ID" Value="Id" Margin="Margin.Dense" Variant="Variant.Outlined"
+                          ReadOnly="true"/>
+            <MudTextField T="string" Label="Name" Value="@Name" Margin="Margin.Dense"
+                          Variant="Variant.Outlined"/>
+            <MudTextField T="string" Label="Surname" Value="@Surname" Margin="Margin.Dense"
+                          Variant="Variant.Outlined"/>
+            <MudTextField T="string" Label="Nickname" Value="@Nickname" Margin="Margin.Dense"
+                          Variant="Variant.Outlined"/>
+            <MudTextField T="string" Label="Location" Value="@Location" Margin="Margin.Dense"
+                          Variant="Variant.Outlined"/>
+            <MudTextField T="string" Label="Avatar Path" Value="@Avatar" Margin="Margin.Dense"
+                          Variant="Variant.Outlined"/>
+        </MudItem>
+
+        <!-- Right Column -->
+        <MudItem xs="12" sm="6" Class="px-1">
+            <MudCheckBox T="bool" Label="Unlocked By Default" Value="UnlockedByDefault" bind-Value="UnlockedByDefault" Dense="true"/>
+            <MudCheckBox T="bool" Label="Buyer Up" Value="BuyerUp" bind-Value="BuyerUp" Dense="true"/>
+            <MudCheckBox T="bool" Label="Customization Seller" Value="CustomizationSeller" bind-Value="CustomizationSeller" Dense="true"/>
+            <MudCheckBox T="bool" Label="Available In Raid" Value="AvailableInRaid" bind-Value="AvailableInRaid" Dense="true"/>
+            <MudCheckBox T="bool" Label="Medic" Value="Medic" bind-Value="Medic" Dense="true"/>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public required TraderEditor TraderEditor { get; init; }
+
+    private TraderBase? TraderBase => TraderEditor.SelectedTrader?.Base;
+    private string Id => TraderBase?.Id ?? string.Empty;
+    private bool AvailableInRaid => TraderBase?.AvailableInRaid ?? false;
+    private string Avatar => TraderBase?.Avatar ?? string.Empty;
+    
+    private bool BuyerUp => TraderBase?.BuyerUp ?? false;
+    private bool CustomizationSeller => TraderBase?.CustomizationSeller ?? false;
+    
+    private string Location => TraderBase?.Location ?? string.Empty;
+    private bool Medic => TraderBase?.Medic ?? false;
+    private string Name => TraderBase?.Name ?? string.Empty;
+    private string Surname => TraderBase?.Surname ?? string.Empty;
+    private string Nickname => TraderBase?.Nickname ?? string.Empty;
+    private bool UnlockedByDefault => TraderBase?.UnlockedByDefault ?? false;
+}

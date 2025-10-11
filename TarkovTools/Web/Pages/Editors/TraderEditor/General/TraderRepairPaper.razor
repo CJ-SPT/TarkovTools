@@ -1,0 +1,85 @@
+﻿@using SPTarkov.Server.Core.Models.Common
+@using SPTarkov.Server.Core.Models.Eft.Common.Tables
+<MudPaper Elevation="3" Class="pa-4 mb-4" Style="max-width: 90%;">
+    <MudGrid Spacing="1">
+        <MudItem xs="5" sm="5" md="5" Class="px-1">
+            <MudText Typo="Typo.h6" Class="mb-3">Repair Configuration</MudText>
+        </MudItem>
+
+        <MudItem xs="2" sm="2" md="2" Class="px-1">
+            <MudCheckBox T="bool" Label="Available" Value="RepairAvailable" bind-Value="RepairAvailable" Dense="true"/>
+        </MudItem>
+        
+        <MudDivider/>
+        
+        <MudItem xs="4" sm="4" md="4" Class="px-1">
+            <MudSelect T="string" Label="Currency" Value="@RepairCurrency" Margin="Margin.Dense"
+                       Variant="Variant.Outlined">
+                <MudSelectItem Value="@("5449016a4bdc2d6f028b456f")">RUB</MudSelectItem>
+                <MudSelectItem Value="@("5696686a4bdc2da3298b456a")">USD</MudSelectItem>
+                <MudSelectItem Value="@("569668774bdc2da2298b4568")">EUR</MudSelectItem>
+                <MudSelectItem Value="@("5d235b4d86f7742e017bc88a")">GP</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+
+        <MudItem xs="4" sm="4" md="4" Class="px-1">
+            <MudNumericField T="double" Label="Currency Coefficient" Value="@RepairCurrencyCoefficient"
+                             Variant="Variant.Outlined" Margin="Margin.Dense"/>
+        </MudItem>
+
+        <MudItem xs="4" sm="4" md="4" Class="px-1">
+            <MudNumericField T="double" Label="Quality" Value="@RepairQuality"
+                             Variant="Variant.Outlined" Margin="Margin.Dense"/>
+        </MudItem>
+
+        <InteractableSearchableList
+            HeaderText="Excluded Categories"
+            Items="RepairExcludedCategories.Select(x => x.ToString()).ToList()"
+            ShowAddButton="false"
+            SearchType="SearchResultType.ItemParent"/>
+
+        <InteractableSearchableList
+            HeaderText="Excluded Items"
+            Items="RepairExcludedItems"
+            ShowAddButton="false"
+            SearchType="SearchResultType.Item"/>
+    </MudGrid>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public required TraderEditor TraderEditor { get; init; }
+
+    private TraderBase? TraderBase => TraderEditor.SelectedTrader?.Base;
+    
+    private bool RepairAvailable => TraderBase?.Repair?.Availability ?? false;
+    private string RepairCurrency => TraderBase?.Repair?.Currency ?? string.Empty;
+    private double RepairCurrencyCoefficient => TraderBase?.Repair?.CurrencyCoefficient ?? 0;
+    private double RepairQuality => TraderBase?.Repair?.Quality ?? 0;
+    
+    private List<MongoId> RepairExcludedCategories => TraderBase?.Repair?.ExcludedCategory ?? [];
+    private List<string> RepairExcludedItems => TraderBase?.Repair?.ExcludedIdList ?? [];
+    
+    private string _newRepairExcludedCategory = string.Empty;
+    private string _newRepairExcludedItem = string.Empty;
+    
+    private void AddRepairExcludedCategory()
+    {
+        if (!string.IsNullOrWhiteSpace(_newRepairExcludedCategory) && !RepairExcludedCategories.Contains(_newRepairExcludedCategory))
+        {
+            RepairExcludedCategories.Add(_newRepairExcludedCategory);
+            _newRepairExcludedCategory = string.Empty;
+            StateHasChanged();
+        }
+    }
+    
+    private void AddRepairExcludedItem()
+    {
+        if (!string.IsNullOrWhiteSpace(_newRepairExcludedItem) && !RepairExcludedItems.Contains(_newRepairExcludedItem))
+        {
+            RepairExcludedItems.Add(_newRepairExcludedItem);
+            _newRepairExcludedItem = string.Empty;
+            StateHasChanged();
+        }
+    }
+}

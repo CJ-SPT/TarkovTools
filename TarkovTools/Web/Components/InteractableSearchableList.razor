@@ -1,0 +1,125 @@
+﻿@using SPTarkov.Server.Core.Models.Utils
+@using SPTarkov.Server.Core.Services
+@using global::TarkovTools.Models
+@using global::TarkovTools.Services
+
+@inject SearchService SearchService;
+@inject DatabaseService Database;
+@inject ISptLogger<TarkovTools> Logger;
+
+<MudItem xs="BreakPoint" sm="BreakPoint" md="BreakPoint" Class="px-1">
+    <MudText Typo="Typo.subtitle2" Class="mt-2">@HeaderText</MudText>
+    <MudList Dense="true" Class="mt-2 overflow-y-auto" Style="height: 200px;" T="string">
+        @foreach (var item in Items)
+        {
+            <MudListItem>
+                <MudGrid>
+                    <MudItem xs="10" sm="10" md="10">
+                        <MudText>@GetLocalizedEntry(item)</MudText>
+                    </MudItem>
+                    <MudItem xs="2" sm="2" md="2">
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                       OnClick="@(() => Items.Remove(item))"
+                                       Color="Color.Error"/>
+                    </MudItem>
+                </MudGrid>
+            </MudListItem>
+        }
+    </MudList>
+    <div class="d-flex mt-2">
+        <TarkovAutoComplete SearchType="SearchType"
+                            ResetOnClicked="ResetOnClicked"
+                            OnResultSelected="OnSearchSelected"/>
+        
+        @if (ShowAddButton)
+        {
+            <MudButton OnClick="AddEntry"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       Color="Color.Primary"
+                       Class="ml-2">
+                Add
+            </MudButton>
+        }
+        
+    </div>
+</MudItem>
+
+@code {
+    /// <summary>
+    /// Header of the list to be displayed
+    /// </summary>
+    [Parameter]
+    public required string HeaderText { get; init; }
+    
+    /// <summary>
+    /// Collection of list items to reference
+    /// </summary>
+    [Parameter]
+    public required List<string> Items { get; init; }
+    
+    /// <summary>
+    /// What type of results does this search yield?
+    /// </summary>
+    [Parameter]
+    public required SearchResultType SearchType { get; init; }
+
+    /// <summary>
+    /// How many columns should it take up
+    /// </summary>
+    [Parameter] 
+    public int BreakPoint { get; set; } = 6;
+
+    /// <summary>
+    /// Does this have an add button?
+    /// </summary>
+    [Parameter] 
+    public bool ShowAddButton { get; set; } = true;
+    
+    /// <summary>
+    /// Does the search reset on click?
+    /// </summary>
+    [Parameter] 
+    public bool ResetOnClicked { get; set; } = true;
+    
+    private SearchResult? _searchResult;
+    
+    private void AddEntry()
+    {
+        if (_searchResult is null ||
+            Items.Contains(_searchResult.Id)) return;
+        
+        Items.Add(_searchResult.Id);
+        
+        // Reset the search result
+        if (ResetOnClicked)
+        {
+            _searchResult = null;
+        }
+        
+        StateHasChanged();
+    }
+
+    private string GetLocalizedEntry(string id)
+    {
+        switch (SearchType)
+        {
+            case SearchResultType.Item:
+            case SearchResultType.ItemParent:
+                return SearchService.GetLocalizedName(id);
+            case SearchResultType.Trader:
+                return SearchService.GetLocalizedName(id);
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
+    }
+
+    private void OnSearchSelected(SearchResult? result)
+    {
+        _searchResult = result;
+        
+        if (result != null)
+        {
+            AddEntry();
+        }
+    }
+}

@@ -1,0 +1,21 @@
+﻿@using global::TarkovTools.Web.Pages.Editors.TraderEditor.Commerce
+
+<MudGrid Spacing="1" Class="mt-4">
+    <MudItem xs="12" sm="6" md="4">
+        <!-- Items Buy Configuration -->
+        <TraderSellCategoryPaper TraderEditor="TraderEditor"/>
+    </MudItem>
+
+    <MudItem xs="12" sm="6" md="4">
+        <TraderBuyPaper TraderEditor="TraderEditor"/>
+    </MudItem>
+
+    <MudItem xs="12" sm="6" md="4">
+        <TraderBuyProhibitedPaper TraderEditor="TraderEditor"/>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter]
+    public required TraderEditor TraderEditor { get; init; }
+}

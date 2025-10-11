@@ -1,0 +1,93 @@
+﻿@using SPTarkov.Server.Core.Models.Enums
+
+<MudPaper Elevation="3" Class="pa-4" Style="width: 700px; max-width: 90%;">
+    <MudText Typo="Typo.h6" Class="mb-3">Sell Configuration</MudText>
+    <MudGrid Spacing="1">
+        
+        <MudItem xs="12" sm="6" Class="px-1">
+            <MudNumericField T="double" Label="Sell Mod" Value="@ProhibitedItemsSellModifier"
+                             Variant="Variant.Outlined" Margin="Margin.Dense"/>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" Class="px-1">
+            <MudNumericField T="double" Label="Grid Height" Value="@GridHeight" Margin="Margin.Dense"
+                             Variant="Variant.Outlined"/>
+        </MudItem>
+        
+        <MudItem xs="12" sm="6" Class="px-1">
+            <MudNumericField T="decimal" Label="Discount (%)" Value="@Discount" Margin="Margin.Dense"
+                             Variant="Variant.Outlined"/>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" Class="px-1">
+            <MudNumericField T="decimal" Label="Discount End" Value="@DiscountEnd" Margin="Margin.Dense"
+                             Variant="Variant.Outlined"/>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" Class="px-1">
+            <MudSelect T="CurrencyType" Label="Currency" Value="@Currency" Margin="Margin.Dense"
+                       Variant="Variant.Outlined">
+                <MudSelectItem Value="@(CurrencyType.RUB)">RUB</MudSelectItem>
+                <MudSelectItem Value="@(CurrencyType.USD)">USD</MudSelectItem>
+                <MudSelectItem Value="@(CurrencyType.EUR)">EUR</MudSelectItem>
+                <MudSelectItem Value="@(CurrencyType.GP)">GP</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        
+        <MudItem xs="12" sm="6" Class="px-1">
+            <MudNumericField T="decimal" Label="Balance (USD)" Value="@BalanceDollars" Margin="Margin.Dense"
+                             Variant="Variant.Outlined"/>
+        </MudItem>
+        
+        <MudItem xs="12" sm="6" Class="px-1">
+            <MudNumericField T="decimal" Label="Balance (EUR)" Value="@BalanceEur" Margin="Margin.Dense"
+                             Variant="Variant.Outlined"/>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" Class="px-1">
+            <MudNumericField T="decimal" Label="Balance (RUB)" Value="@BalanceRub" Margin="Margin.Dense"
+                             Variant="Variant.Outlined"/>
+        </MudItem>
+
+        <MudDivider Style="margin-top: 5px"/>
+
+        <InteractableSearchableList
+            BreakPoint="6"
+            ShowAddButton="false"
+            HeaderText="Sell Categories"
+            Items="SellCategories"
+            SearchType="SearchResultType.ItemParent"/>
+        
+    </MudGrid>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public required TraderEditor TraderEditor { get; init; }
+    
+    private string _sellCategory = string.Empty;
+    private List<string> SellCategories => TraderEditor.SelectedTrader?.Base.SellCategory ?? [];
+
+    private int ProhibitedItemsSellModifier => TraderEditor.SelectedTrader?.Base.ProhibitedItemsSellModifier ?? 0;
+    
+    private decimal BalanceDollars => TraderEditor.SelectedTrader?.Base.BalanceDollar ?? 0;
+    private decimal BalanceEur => TraderEditor.SelectedTrader?.Base.BalanceEuro ?? 0;
+    private decimal BalanceRub => TraderEditor.SelectedTrader?.Base.BalanceRub ?? 0;
+    
+    private decimal Discount => TraderEditor.SelectedTrader?.Base.Discount ?? 0;
+    private decimal DiscountEnd => TraderEditor.SelectedTrader?.Base.DiscountEnd ?? 0;
+    
+    private CurrencyType Currency => TraderEditor.SelectedTrader?.Base.Currency ?? CurrencyType.RUB;
+    private double GridHeight => TraderEditor.SelectedTrader?.Base.GridHeight ?? 0;
+    
+    private void AddSellCategory()
+    {
+        if (!string.IsNullOrWhiteSpace(_sellCategory) && !SellCategories.Contains(_sellCategory))
+        {
+            SellCategories.Add(_sellCategory);
+            _sellCategory = string.Empty;
+            StateHasChanged();
+            Console.WriteLine($"Added sell category. Count: {SellCategories.Count}");
+        }
+    }
+}

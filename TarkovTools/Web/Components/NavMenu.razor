@@ -1,0 +1,92 @@
+﻿@using Microsoft.AspNetCore.Components.Routing
+
+<MudNavMenu>
+    <MudNavGroup Title="Main" Expanded="true">
+        <MudNavLink IconColor="Color.Default" Icon="@Icons.Material.Filled.Home"
+                    Href="/tarkovtools" 
+                    Match="NavLinkMatch.All">
+            Home
+        </MudNavLink>
+        
+        <MudNavLink IconColor="Color.Default" Icon="@Icons.Material.Filled.FactCheck"
+                    Href="/tarkovtools"
+                    Match="NavLinkMatch.All">
+            Achievements
+        </MudNavLink>
+
+        <MudNavLink IconColor="Color.Default" Icon="@Icons.Material.Filled.EmojiPeople"
+                    Href="/tarkovtools"
+                    Match="NavLinkMatch.All">
+            Bots
+        </MudNavLink>
+
+        <MudNavLink IconColor="Color.Default" Icon="@Icons.Material.Filled.SportsVolleyball"
+                    Href="/tarkovtools"
+                    Match="NavLinkMatch.All">
+            Globals
+        </MudNavLink>
+
+        <MudNavLink IconColor="Color.Default" Icon="@Icons.Material.Filled.LocalCafe"
+                    Href="/tarkovtools"
+                    Match="NavLinkMatch.All">
+            Hideout
+        </MudNavLink>
+
+        <MudNavLink IconColor="Color.Default" Icon="@Icons.Material.Filled.QuestionAnswer"
+                    Href="/tarkovtools"
+                    Match="NavLinkMatch.All">
+            Locales
+        </MudNavLink>
+        <MudNavLink IconColor="Color.Default" Icon="@Icons.Material.Filled.EditLocation"
+                    Href="/tarkovtools"
+                    Match="NavLinkMatch.All">
+            Locations
+        </MudNavLink>
+
+        <MudNavLink IconColor="Color.Default" Icon="@Icons.Material.Filled.SupervisedUserCircle"
+                    Href="/tarkovtools"
+                    Match="NavLinkMatch.All">
+            Profile Templates
+        </MudNavLink>
+
+        <MudNavLink IconColor="Color.Default" Icon="@Icons.Material.Filled.LocalLibrary"
+                    Href="/tarkovtools"
+                    Match="NavLinkMatch.All">
+            Quests
+        </MudNavLink>
+
+        <MudNavLink IconColor="Color.Default" Icon="@Icons.Material.Filled.KeyboardDoubleArrowUp"
+                    Href="/tarkovtools"
+                    Match="NavLinkMatch.All">
+            Skills
+        </MudNavLink>
+
+        <MudNavLink IconColor="Color.Default" Icon="@Icons.Material.Filled.AccountCircle"
+                    Href="/tarkovtools/TraderEditor"
+                    Match="NavLinkMatch.All">
+            Traders
+        </MudNavLink>
+
+    </MudNavGroup>
+    <MudNavGroup Title="Misc" Expanded="true">
+        <MudNavLink IconColor="Color.Default" Icon="@Icons.Material.Filled.DataObject"
+                    Href="/tarkovtools/MongoIdGenerator"
+                    Match="NavLinkMatch.All">
+            MongoId Generator
+        </MudNavLink>
+        <MudNavLink IconColor="Color.Default" Icon="@Icons.Material.Filled.ConnectedTv"
+                    Href="/tarkovtools"
+                    Match="NavLinkMatch.All">
+            Example and Reference
+        </MudNavLink>
+        <MudNavLink IconColor="Color.Default" Icon="@Icons.Material.Filled.Settings"
+                    Href="/tarkovtools/Settings"
+                    Match="NavLinkMatch.All">
+            Settings
+        </MudNavLink>
+    </MudNavGroup>
+</MudNavMenu>
+
+@code
+{
+}

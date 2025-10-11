@@ -1,0 +1,174 @@
+﻿@using SPTarkov.Server.Core.Models.Eft.Common.Tables
+@using SPTarkov.Server.Core.Models.Utils
+@using SPTarkov.Server.Core.Services
+
+@inject ISptLogger<TarkovTools> Logger;
+@inject SearchService SearchService;
+@inject DatabaseService Database;
+
+
+<MudCard>
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudGrid Spacing="1">
+                <MudItem xs="8" sm="8" md="8">
+                    <MudText Typo="Typo.h6">Barter Scheme: @AssortCellContext.Item.LocalizedName</MudText>
+                </MudItem>
+                
+                <MudSpacer/>
+
+                <MudItem xs="2" sm="2" md="2" Class="ma-1">
+                    <MudNumericField T="int" Label="Unlocked At Trader Level"
+                                     Min="1" Max="4"
+                                     Value="@DataGrid.LoyalLevelItems[AssortCellContext.Item.Id]"
+                                     ValueChanged="@(value =>
+                                                   {
+                                                       DataGrid.LoyalLevelItems[AssortCellContext.Item.Id] = value;
+                                                       StateHasChanged();
+                                                   })"
+                                     Variant="Variant.Outlined" Margin="Margin.Dense"/>
+                </MudItem>
+                
+            </MudGrid>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent>
+        <MudGrid Spacing="1" Justify="Justify.FlexStart">
+            <MudItem xs="12" sm="12" md="12">
+                <MudDataGrid T="BarterScheme"
+                             Items="@(GetBarterSchemesForRow())"
+                             ReadOnly="false"
+                             Striped="true"
+                             Bordered="true"
+                             Dense="true"
+                             EditMode="DataGridEditMode.Cell"
+                             CommittedItemChanges="OnSchemeChanged">
+
+                    <Columns>
+                        <HierarchyColumn T="BarterScheme" Hidden="true"/>
+                        <PropertyColumn Property="x => GetBarterSchemesForRow().IndexOf(x)" Title="Index" Editable="false"/>
+                        <PropertyColumn Property="x =>x.Template" Title="Template Id" Editable="false"/>
+                        <PropertyColumn Property="x => SearchService.GetLocalizedName(x.Template)" Title="Localized Name" Editable="false"/>
+                        <PropertyColumn Property="x => x.Count" Title="Count"/>
+                    </Columns>
+                </MudDataGrid>
+            </MudItem>
+            
+            <MudItem xs="3" sm="3" md="3" Class="ma-1" Style="display: flex; justify-content: center; align-items: center;">
+                <TarkovAutoComplete SearchType="SearchResultType.Item" OnResultSelected="OnSearchResultSelected"/>
+            </MudItem>
+            
+            <MudItem xs="1" sm="1" md="1" Class="ma-1" Style="display: flex; justify-content: center; align-items: center;">
+                <MudNumericField T="double"
+                                 Variant="Variant.Outlined"
+                                 ValueChanged="d => _selectedCount = d" 
+                                 Min="0" 
+                                 Label="Count"/>
+            </MudItem>
+
+            <MudItem xs="1" sm="1" md="1" Class="ma-1" Style="display: flex; justify-content: center; align-items: center;">
+                <MudButton StartIcon="@Icons.Material.Filled.AddBox"
+                           IconColor="MudBlazor.Color.Success"
+                           IconSize="Size.Large"
+                           Variant="Variant.Outlined"
+                           OnClick="AddBarter">
+                    Add Barter
+                </MudButton>
+            </MudItem>
+            
+            <MudDivider/>
+
+            <MudItem xs="12" sm="12" md="12" Class="ma-1">
+                <MudText Typo="Typo.h6">Upd: @AssortCellContext.Item.LocalizedName</MudText>
+            </MudItem>
+            
+            <MudItem xs="2" sm="2" md="2" Class="ma-1" Style="display: flex; justify-content: center; align-items: center;">
+                <MudCheckBox @bind-Value="SelectedItemUpd.UnlimitedCount" 
+                             Label="Unlimited Count"
+                             LabelPlacement="Placement.Left"/>
+            </MudItem>
+
+            <MudItem xs="2" sm="2" md="2" Class="ma-1" Style="display: flex; justify-content: center; align-items: center;">
+                <MudNumericField T="double"
+                                 Value="SelectedItemUpd.StackObjectsCount ?? 0"
+                                 Variant="Variant.Outlined"
+                                 ValueChanged="d => SelectedItemUpd.StackObjectsCount = d"
+                                 Min="1"
+                                 Label="Stack Objects Count"/>
+            </MudItem>
+
+            <MudItem xs="2" sm="2" md="2" Class="ma-1" Style="display: flex; justify-content: center; align-items: center;">
+                <MudNumericField T="int"
+                                 Value="SelectedItemUpd.BuyRestrictionMax ?? 0"
+                                 Variant="Variant.Outlined"
+                                 ValueChanged="i => SelectedItemUpd.BuyRestrictionMax = i"
+                                 Min="0"
+                                 Label="Buy Restriction Max"/>
+            </MudItem>
+
+            <MudItem xs="2" sm="2" md="2" Class="ma-1" Style="display: flex; justify-content: center; align-items: center;">
+                <MudNumericField T="int"
+                                 Value="SelectedItemUpd.BuyRestrictionCurrent ?? 0"
+                                 Variant="Variant.Outlined"
+                                 ValueChanged="i => SelectedItemUpd.BuyRestrictionCurrent = i"
+                                 Min="0"
+                                 Label="Buy Restriction Current"/>
+            </MudItem>
+            
+        </MudGrid>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter] public required AssortDataGrid DataGrid { get; set; }
+
+    [Parameter] public required CellContext<AssortGridDataModel> AssortCellContext { get; set; }
+
+    private SearchResult? _searchResult;
+
+    private Upd SelectedItemUpd => DataGrid.AssortItems.First(i => i.Id == AssortCellContext.Item.Id).Upd!;
+    
+    private double _selectedCount;
+    
+    private List<BarterScheme> GetBarterSchemesForRow()
+    {
+        return DataGrid.BarterScheme[AssortCellContext.Item.Id][0]!;
+    }
+    
+    private int GetLoyaltyLevel(string id)
+    {
+        return DataGrid.LoyalLevelItems[id];
+    }
+
+    private void AddBarter()
+    {
+        if (_searchResult is null) return;
+        
+        var schemes = GetBarterSchemesForRow();
+        
+        if (schemes.Any(s => s.Template == _searchResult.Id)) return;
+        
+        GetBarterSchemesForRow().Add(
+            new BarterScheme()
+            {
+                Count = _selectedCount,
+                Template = _searchResult.Id,
+            });
+        
+        StateHasChanged();
+    }
+    
+    private void OnSearchResultSelected(SearchResult? result)
+    {
+        _searchResult = result;
+    }
+
+    private void OnSchemeChanged(BarterScheme scheme)
+    {
+        var schemeToUpdate = GetBarterSchemesForRow().First(s => s == scheme);
+
+        Logger.Debug($"Updated Counted for {schemeToUpdate.Template} to {schemeToUpdate.Count}");
+        
+        schemeToUpdate.Count = scheme.Count;
+    }
+}

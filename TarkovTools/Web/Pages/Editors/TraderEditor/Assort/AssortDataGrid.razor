@@ -1,0 +1,272 @@
+﻿@using System.Collections.ObjectModel
+@using SPTarkov.Server.Core.Models.Common
+@using SPTarkov.Server.Core.Models.Eft.Common.Tables
+@using SPTarkov.Server.Core.Models.Utils
+@using SPTarkov.Server.Core.Services
+@using global::TarkovTools.Extensions
+
+@inject ISptLogger<TarkovTools> Logger;
+@inject SearchService SearchService;
+@inject DatabaseService Database;
+@inject IDialogService DialogService;
+
+<MudItem xs="6" sm="6" md="6" Class="ma-4">
+    <MudText Typo="Typo.caption">
+        Search or add item
+        <MudStack Row>
+            <TarkovAutoComplete SearchType="SearchResultType.Item" 
+                                ResetOnClicked="false"
+                                OnResultSelected="OnItemSearchResultSelected"
+                                OnSearchCleared="OnSearchCleared"/>
+
+            <MudButton StartIcon="@Icons.Material.Filled.AddBox"
+                       IconColor="MudBlazor.Color.Success"
+                       Variant="Variant.Outlined"
+                       OnClick="AddItem">
+                Add Item
+            </MudButton>
+
+        </MudStack>
+    </MudText>
+</MudItem>
+
+
+<MudItem xs="12" sm="12" md="12" Class="ma-4" Style="max-height: inherit; max-width: inherit;">
+    <MudDataGrid T="AssortGridDataModel"
+                 @ref="_dataGrid"
+                 Items="@GridData"
+                 ReadOnly="false"
+                 Striped="true"
+                 Bordered="true"
+                 Groupable="true"
+                 GroupExpanded="false"
+                 ColumnResizeMode="ResizeMode.Column"
+                 Dense="true"
+                 Style="max-width: inherit;"
+                 RowContextMenuClick="OpenMenuContent"
+                 EditMode="@DataGridEditMode.Cell"
+                 EditTrigger="DataGridEditTrigger.OnRowClick">
+
+        <Columns>
+            <HierarchyColumn T="AssortGridDataModel"/>
+            <PropertyColumn Property="x => x.LocalizedName" Title="Localized Name" Editable="false" Grouping/>
+            <PropertyColumn Property="x => x.TemplateId" Title="Template Id" Editable="false"/>
+            <PropertyColumn Property="x => x.Id" Title="Id" Editable="false"/>
+            <PropertyColumn Property="x => x.ParentId" Title="Parent Id" Editable="false"/>
+            <PropertyColumn Property="x => x.SlotId" Title="Slot Id" Editable="false"/>
+        </Columns>
+
+        <ChildRowContent>
+            @if (!context.Item.IsChild)
+            {
+                <MudGrid Spacing="1" Style="width: 75vw;">
+                    
+                    <MudItem xs="12" sm="12" md="12" Class="ma-4">
+                        <ChildItemCard AssortCellContext="context" DataGrid="this"/>
+                    </MudItem>
+
+                    <MudDivider/>
+
+                    <MudItem xs="12" sm="12" md="12" Class="ma-4">
+                        <BarterSchemeCard AssortCellContext="context" DataGrid="this"/>
+                    </MudItem>
+                    
+                </MudGrid>
+            }
+        </ChildRowContent>
+
+        <PagerContent>
+            <MudDataGridPager T="AssortGridDataModel" PageSizeOptions=@(new[] {5, 10, 15, 20, 25, 35, 50}) />
+        </PagerContent>
+    </MudDataGrid>
+
+    <MudMenu PositionAtCursor="true" @ref="_contextMenu" id="_contextMenu">
+        <MudMenuItem Icon="@Icons.Material.Filled.Delete" OnClick="RemoveItem" Disabled="ContextRow.IsChild">
+            @(ContextRow.IsChild ? "Cannot Delete Children" : "Delete")
+        </MudMenuItem>
+    </MudMenu>
+
+</MudItem>
+
+@code {
+    [Parameter]
+    public required TraderEditor TraderEditor { get; init; }
+    
+    MudDataGrid<AssortGridDataModel>? _dataGrid;
+    private int _selectedLoyalLevelInput;
+    
+    public List<Item> AssortItems => TraderEditor.SelectedTrader?.Assort.Items ?? [];
+    public Dictionary<MongoId, List<List<BarterScheme>>> BarterScheme => TraderEditor.SelectedTrader?.Assort.BarterScheme ?? [];
+    public Dictionary<MongoId, int> LoyalLevelItems => TraderEditor.SelectedTrader?.Assort.LoyalLevelItems ?? [];
+
+    public ObservableCollection<AssortGridDataModel> GridData { get; set; } = [];
+    private Lock _gridDataLock = new();
+    
+    public AssortGridDataModel? ContextRow { get; private set; }
+    
+    private MudMenu? _contextMenu = null!;
+
+    private SearchResult? _itemSearchResult;
+    
+    protected override void OnInitialized()
+    {
+        TraderEditor.OnTraderChanged += BuildRootDataGrid;
+        BuildRootDataGrid();
+    }
+    
+    private void BuildRootDataGrid()
+    {
+        GridData.Clear();
+        
+        var items = AssortItems.Where(i => i.ParentId == "hideout");
+        foreach (var item in items)
+        {
+            var childrenItems = new List<AssortGridDataModel>();
+            
+            foreach (var child in item.FindChildrenRecursively(AssortItems))
+            {
+                childrenItems.Add(BuildGridModel(child, null));
+            }
+
+            lock (_gridDataLock)
+            {
+                GridData.Add(BuildGridModel(item, childrenItems));
+            }
+            
+            StateHasChanged();
+        }
+    }
+    
+    private AssortGridDataModel BuildGridModel(Item item, List<AssortGridDataModel>? children)
+    {
+        return new AssortGridDataModel()
+        {
+            Id = item.Id,
+            TemplateId = item.Template,
+            LocalizedName = SearchService.GetLocalizedName(item.Template!),
+            ParentId = item.ParentId!,
+            SlotId = item.SlotId!,
+            IsChild = item.ParentId != "hideout",
+            ChildItemData = children ?? []
+        };
+    }
+    
+    private void AddItem()
+    {
+        if (_itemSearchResult is null) return;
+        
+        var item = CreateTraderItem(_itemSearchResult.Id);
+        var scheme = CreateBarterScheme();
+        
+        AssortItems.Add(item);
+        BarterScheme.Add(item.Id!, [scheme]);
+        LoyalLevelItems.Add(item.Id!, 1);
+        
+        // Rebuild the grid for the item to appear
+        BuildRootDataGrid();
+    }
+    
+    private async Task RemoveItem()
+    {
+        var result = await DialogService.ShowMessageBox(
+            "Delete Item",
+            "Are you sure?",
+            yesText: "Yes", cancelText: "Cancel"
+        );
+        
+        if (ContextRow is null || result is null) return;
+
+        var item = AssortItems.FirstOrDefault(i => i.Id == ContextRow.Id);
+
+        if (item is null)
+        {
+            Logger.Error("Could not remove item, not found in assort");
+            return;
+        }
+        
+        AssortItems.Remove(item);
+        BarterScheme.Remove(item.Id!);
+        LoyalLevelItems.Remove(item.Id!);
+
+        foreach (var child in ContextRow.ChildItemData)
+        {
+            var childItem = AssortItems.FirstOrDefault(i => i.Id == child.Id);
+            
+            if (childItem is null)
+            {
+                Logger.Error("Could not remove child item, not found in assort");
+                continue;
+            }
+            
+            AssortItems.Remove(childItem);
+            BarterScheme.Remove(childItem.Id!);
+            LoyalLevelItems.Remove(childItem.Id!);
+        }
+
+        GridData.Remove(ContextRow);
+        StateHasChanged();
+    }
+    
+    private async Task OpenMenuContent(DataGridRowClickEventArgs<AssortGridDataModel> args)
+    {
+        ContextRow = args.Item;
+        await _contextMenu?.OpenMenuAsync(args.MouseEventArgs)!;
+    }
+
+    private void OnItemSearchResultSelected(SearchResult? searchResult)
+    {
+        if (searchResult != null)
+        {
+            var items = GridData.Where(i => i.TemplateId == searchResult.Id)
+                .ToArray();
+            
+            foreach (var item in GridData.ToArray())
+            {
+                if (items.Any(i => i == item)) continue;
+                
+                GridData.Remove(item);
+            }
+            
+            StateHasChanged();
+        }
+        
+        _itemSearchResult = searchResult;
+    }
+
+    private void OnSearchCleared()
+    {
+        Logger.Debug("Assort data grid search cleared");
+        BuildRootDataGrid();
+    }
+    
+    private static Item CreateTraderItem(string templateId, string parentId = "hideout", string slotId = "hideout")
+    {
+        return new Item
+        {
+            Id = new MongoId(),
+            Template = templateId,
+            ParentId = parentId,
+            SlotId = slotId,
+            Upd = new Upd
+            {
+                BuyRestrictionCurrent = 0,
+                BuyRestrictionMax = 3,
+                StackObjectsCount = 9999999,
+                UnlimitedCount = true
+            }
+        };
+    }
+
+    private static List<BarterScheme> CreateBarterScheme(string templateId = "5449016a4bdc2d6f028b456f", int count = 1)
+    {
+        return
+        [
+            new BarterScheme
+            {
+                Template = templateId,
+                Count = count,
+            }
+        ];
+    }
+}
+

@@ -1,0 +1,14 @@
+﻿<MudPaper Elevation="3" Class="mt-6">
+    <MudGrid Spacing="1">
+        <MudItem xs="12" sm="12" md="12">
+            <MudText Typo="Typo.h6" Class="mb-3 d-flex justify-center">Assort Editor</MudText>
+        </MudItem>
+
+        <AssortDataGrid TraderEditor="TraderEditor"/>
+    </MudGrid>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public required TraderEditor TraderEditor { get; init; }
+}

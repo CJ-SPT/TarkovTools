@@ -1,0 +1,118 @@
+﻿@using SPTarkov.Server.Core.Models.Eft.Common.Tables
+
+<MudPaper Elevation="3" Class="pa-4 mb-4" Style="height: 370px;">
+    <div class="d-flex justify-space-between align-center mb-3">
+        <MudText Typo="Typo.h6">Loyalty Levels</MudText>
+        <div class="d-flex">
+            <MudButton OnClick="AddLoyaltyLevel" 
+                      StartIcon="@Icons.Material.Filled.Add" 
+                      Color="MudBlazor.Color.Primary"
+                      Disabled="@(LoyaltyLevels.Count >= 4)"
+                      Class="mr-2">
+                Add Level
+            </MudButton>
+            <MudButton OnClick="RemoveLoyaltyLevel" 
+                      StartIcon="@Icons.Material.Filled.Remove" 
+                      Color="MudBlazor.Color.Error"
+                      Disabled="@(LoyaltyLevels.Count <= 1)">
+                Remove Level
+            </MudButton>
+        </div>
+    </div>
+    <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-3">
+        @for (var i = 0; i < LoyaltyLevels.Count; i++)
+        {
+            var level = i;
+            <MudTabPanel Text="@($"Level {level + 1}")">
+                <MudGrid>
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudNumericField T="double?" Label="Buy Price Coef"
+                                         Value="@LoyaltyLevels[level].BuyPriceCoefficient"
+                                         ValueChanged="@(val => LoyaltyLevels[level].BuyPriceCoefficient = val)"
+                                         Variant="Variant.Outlined" Margin="Margin.Dense"/>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudNumericField T="double?" Label="Exchange Price Coef"
+                                         Value="@LoyaltyLevels[level].ExchangePriceCoefficient"
+                                         ValueChanged="@(val => LoyaltyLevels[level].ExchangePriceCoefficient = val)"
+                                         Variant="Variant.Outlined" Margin="Margin.Dense"/>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudNumericField T="double?" Label="Heal Price Coef"
+                                         Value="@LoyaltyLevels[level].HealPriceCoefficient"
+                                         ValueChanged="@(val => LoyaltyLevels[level].HealPriceCoefficient = val)"
+                                         Variant="Variant.Outlined" Margin="Margin.Dense"/>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudNumericField T="double?" Label="Insurance Price Coef"
+                                         Value="@LoyaltyLevels[level].InsurancePriceCoefficient"
+                                         ValueChanged="@(val => LoyaltyLevels[level].InsurancePriceCoefficient = val)"
+                                         Variant="Variant.Outlined" Margin="Margin.Dense"/>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudNumericField T="int?" Label="Min Level"
+                                         Value="@LoyaltyLevels[level].MinLevel"
+                                         ValueChanged="@(val => LoyaltyLevels[level].MinLevel = val)"
+                                         Variant="Variant.Outlined" Margin="Margin.Dense"/>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudNumericField T="long?" Label="Min Sales Sum"
+                                         Value="@LoyaltyLevels[level].MinSalesSum"
+                                         ValueChanged="@(val => LoyaltyLevels[level].MinSalesSum = val)"
+                                         Variant="Variant.Outlined" Margin="Margin.Dense"/>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudNumericField T="double?" Label="Min Standing"
+                                         Value="@LoyaltyLevels[level].MinStanding"
+                                         ValueChanged="@(val => LoyaltyLevels[level].MinStanding = val)"
+                                         Step="0.05"
+                                         Variant="Variant.Outlined" Margin="Margin.Dense"/>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudNumericField T="double?" Label="Repair Price Coef"
+                                         Value="@LoyaltyLevels[level].RepairPriceCoefficient"
+                                         ValueChanged="@(val => LoyaltyLevels[level].RepairPriceCoefficient = val)"
+                                         Variant="Variant.Outlined" Margin="Margin.Dense"/>
+                    </MudItem>
+                </MudGrid>
+            </MudTabPanel>
+        }
+    </MudTabs>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public required TraderEditor TraderEditor { get; init; }
+    
+    // TODO: Create default loyalty levels if null
+    private List<TraderLoyaltyLevel> LoyaltyLevels => TraderEditor.SelectedTrader?.Base?.LoyaltyLevels ?? [];
+
+    private void AddLoyaltyLevel()
+    {
+        if (LoyaltyLevels.Count < 4)
+        {
+            var newLevel = new TraderLoyaltyLevel
+            {
+                BuyPriceCoefficient = 1.0,
+                ExchangePriceCoefficient = 1.0,
+                HealPriceCoefficient = 1.0,
+                InsurancePriceCoefficient = 1.0,
+                MinLevel = 1,
+                MinSalesSum = 0,
+                MinStanding = 0.0,
+                RepairPriceCoefficient = 1.0
+            };
+            LoyaltyLevels.Add(newLevel);
+            StateHasChanged();
+        }
+    }
+
+    private void RemoveLoyaltyLevel()
+    {
+        if (LoyaltyLevels.Count > 1)
+        {
+            LoyaltyLevels.RemoveAt(LoyaltyLevels.Count - 1);
+            StateHasChanged();
+        }
+    }
+}
