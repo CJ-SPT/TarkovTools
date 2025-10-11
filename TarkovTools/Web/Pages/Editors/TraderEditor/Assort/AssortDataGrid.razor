@@ -1,13 +1,18 @@
 ﻿@using System.Collections.ObjectModel
+@using System.Diagnostics
 @using SPTarkov.Server.Core.Models.Common
 @using SPTarkov.Server.Core.Models.Eft.Common.Tables
 @using SPTarkov.Server.Core.Models.Utils
 @using SPTarkov.Server.Core.Services
 @using global::TarkovTools.Extensions
+@using SPTarkov.Server.Core.Extensions
+@using SPTarkov.Server.Core.Helpers
+@using SPTarkov.Server.Core.Models.Spt.Logging
 
 @inject ISptLogger<TarkovToolsMod> Logger;
 @inject SearchService SearchService;
 @inject DatabaseService Database;
+@inject InventoryHelper InventoryHelper;
 @inject IDialogService DialogService;
 
 <MudItem xs="6" sm="6" md="6" Class="ma-4">
@@ -110,36 +115,70 @@
     
     protected override void OnInitialized()
     {
-        TraderEditor.OnTraderChanged += BuildRootDataGrid;
-        BuildRootDataGrid();
+        TraderEditor.OnTraderChanged += RunBuildRootDataGrid;
     }
-    
-    private void BuildRootDataGrid()
+
+    protected override async Task OnInitializedAsync()
+    {
+        await BuildRootDataGrid();
+        await base.OnInitializedAsync();
+    }
+
+    private void RunBuildRootDataGrid()
+    {
+        Task.Run(async () => await BuildRootDataGrid());
+    }
+
+    private async Task BuildRootDataGrid()
     {
         GridData.Clear();
+
+        var sw = Stopwatch.StartNew();
+        
+        if (Logger.IsLogEnabled(LogLevel.Debug))
+            Logger.Debug("Building assort data grid");
         
         var items = AssortItems.Where(i => i.ParentId == "hideout");
+
+        var tasks = new List<Task>();
+        
         foreach (var item in items)
         {
-            var childrenItems = new List<AssortGridDataModel>();
-            
-            foreach (var child in item.FindChildrenRecursively(AssortItems))
+            tasks.Add(Task.Factory.StartNew(() =>
             {
-                childrenItems.Add(BuildGridModel(child, null));
-            }
+                Logger.Debug($"Building: {item.Id}");
 
-            lock (_gridDataLock)
-            {
-                GridData.Add(BuildGridModel(item, childrenItems));
-            }
-            
-            StateHasChanged();
+                var result = new List<AssortGridDataModel>();
+                var childrenItems = AssortItems.GetItemWithChildren(item.Id);
+                foreach (var child in childrenItems.Where(x => x.ParentId != "hideout"))
+                {
+                    var gridModel = BuildGridModel(child, null);
+                    result.Add(gridModel);
+                }
+
+                lock (_gridDataLock)
+                {
+                    GridData.Add(BuildGridModel(item, result));
+                }
+                
+                Logger.Debug($"Building Completed: {item.Id}");
+            }));
         }
+        
+        if (Logger.IsLogEnabled(LogLevel.Debug))
+            Logger.Debug($"Waiting on {tasks.Count} tasks");
+        
+        await Task.WhenAll(tasks);
+        
+        if (Logger.IsLogEnabled(LogLevel.Debug))
+            Logger.Debug($"Building assort data grid took {sw.ElapsedMilliseconds}ms");
+        
+        StateHasChanged();
     }
     
     private AssortGridDataModel BuildGridModel(Item item, List<AssortGridDataModel>? children)
     {
-        return new AssortGridDataModel()
+        var result = new AssortGridDataModel()
         {
             Id = item.Id,
             TemplateId = item.Template,
@@ -149,6 +188,11 @@
             IsChild = item.ParentId != "hideout",
             ChildItemData = children ?? []
         };
+        
+        if (Logger.IsLogEnabled(LogLevel.Debug))
+            Logger.Debug($"Built: {result.LocalizedName}");
+
+        return result;
     }
     
     private void AddItem()

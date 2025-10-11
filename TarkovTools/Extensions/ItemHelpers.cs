@@ -38,6 +38,8 @@ public static class ItemExtensions
         
         foreach (var child in FindChildrenItems(item, itemsToSearch))
         {
+            Console.WriteLine(child.Id.ToString());
+            
             result.Add(child);
             result.AddRange(FindChildrenRecursively(child, itemsToSearch));
         }

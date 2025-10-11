@@ -14,7 +14,6 @@ public class SearchService(
     ISptLogger<SearchService> logger,
     DatabaseService databaseService,
     CacheService cacheService,
-    LocaleService localeService,
     ItemHelper itemHelper
     )
 {
