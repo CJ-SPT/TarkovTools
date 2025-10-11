@@ -146,8 +146,6 @@
         {
             tasks.Add(Task.Factory.StartNew(() =>
             {
-                Logger.Debug($"Building: {item.Id}");
-
                 var result = new List<AssortGridDataModel>();
                 var childrenItems = AssortItems.GetItemWithChildren(item.Id);
                 foreach (var child in childrenItems.Where(x => x.ParentId != "hideout"))
@@ -160,8 +158,6 @@
                 {
                     GridData.Add(BuildGridModel(item, result));
                 }
-                
-                Logger.Debug($"Building Completed: {item.Id}");
             }));
         }
         
@@ -189,9 +185,6 @@
             ChildItemData = children ?? []
         };
         
-        if (Logger.IsLogEnabled(LogLevel.Debug))
-            Logger.Debug($"Built: {result.LocalizedName}");
-
         return result;
     }
     

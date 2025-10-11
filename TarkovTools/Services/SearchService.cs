@@ -56,23 +56,12 @@ public class SearchService(
                 if (parentItem != null)
                 {
                     _localizedItemParentNames[parentItem.Id] = parentItem.Name ?? parentItem.Id.ToString();
-                    
-                    if (logger.IsLogEnabled(LogLevel.Debug)) 
-                        logger.Debug($"Cached parent: {_localizedItemParentNames[parent]}");
-                    
-                    continue;
                 }
-                
-                if (logger.IsLogEnabled(LogLevel.Debug)) 
-                    logger.Debug("Failed to set parent");
                 
                 continue;
             }
             
             _localizedItemParentNames[parent] = localizedParentName;
-            
-            if (logger.IsLogEnabled(LogLevel.Debug)) 
-                logger.Debug($"Cached parent(localized): {_localizedItemParentNames[parent]}");
         }
         
         logger.Info($"[TarkovTools] Caching {_localizedItemParentNames.Count} localized parent items for search indexing took {sw.ElapsedMilliseconds}ms");
