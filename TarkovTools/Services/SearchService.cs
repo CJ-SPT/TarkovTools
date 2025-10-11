@@ -18,7 +18,7 @@ public class SearchService(
     )
 {
     private readonly Dictionary<MongoId, string> _localizedItemNames = [];
-    private readonly Dictionary<MongoId, string> _localizedItemParentNames = [];
+    private readonly Dictionary<string, string> _localizedItemParentNames = [];
 
     private bool _hydrated;
     
@@ -30,9 +30,10 @@ public class SearchService(
         }
         
         logger.Info("[TarkovTools] Caching search indexes this might take a minute...");
+
+        var dbItems = databaseService.GetTables().Templates.Items;
         
-        var items = databaseService.GetTables().Templates.Items
-            .Where(item => itemHelper.IsValidItem(item.Key));
+        var items = dbItems.Where(item => itemHelper.IsValidItem(item.Key));
 
         var sw = Stopwatch.StartNew();
         
@@ -44,9 +45,27 @@ public class SearchService(
         logger.Info($"[TarkovTools] Caching {_localizedItemNames.Count} localized items for search indexing took {sw.ElapsedMilliseconds}ms");
         sw.Restart();
         
-        foreach (var parent in items.Select(x => x.Value.Parent))
+        var parents = dbItems.Select(x => x.Value.Parent);
+        
+        foreach (var parent in parents.ToHashSet())
         {
-            _localizedItemParentNames[parent] = GetLocalizedName(parent);
+            var localizedParentName = GetLocalizedName(parent);
+            if (MongoId.IsValidMongoId(localizedParentName))
+            {
+                var parentItem = dbItems.FirstOrDefault(item => item.Value.Id == parent).Value;
+                if (parentItem != null)
+                {
+                    _localizedItemParentNames[parentItem.Id] = parentItem.Name ?? parentItem.Id.ToString();
+                    logger.Debug($"Cached parent: {_localizedItemParentNames[parent]}");
+                    continue;
+                }
+                
+                logger.Debug("Failed to set parent");
+                continue;
+            }
+            
+            _localizedItemParentNames[parent] = localizedParentName;
+            logger.Debug($"Cached parent(localized): {_localizedItemParentNames[parent]}");
         }
         
         logger.Info($"[TarkovTools] Caching {_localizedItemParentNames.Count} localized parent items for search indexing took {sw.ElapsedMilliseconds}ms");
@@ -135,12 +154,32 @@ public class SearchService(
 
     public string GetLocalizedName(MongoId id)
     {
-        if (cacheService.GlobalLocales?.TryGetValue($"{id.ToString()} Name", out var locale) ?? false)
+        if (_localizedItemNames.TryGetValue(id, out var locale))
         {
             return locale;
         }
         
-        return string.Empty;
+        if (cacheService.GlobalLocales?.TryGetValue($"{id.ToString()} Name", out locale) ?? false)
+        {
+            return locale;
+        }
+        
+        return id.ToString();
+    }
+
+    public string GetLocalizedParentName(string id)
+    {
+        if (_localizedItemParentNames.TryGetValue(id, out var locale))
+        {
+            return locale;
+        }
+        
+        if (cacheService.GlobalLocales?.TryGetValue($"{id} Name", out locale) ?? false)
+        {
+            return locale;
+        }
+        
+        return id;
     }
 
     public string GetLocalizedNickname(MongoId id)
@@ -150,10 +189,10 @@ public class SearchService(
             return locale;
         }
         
-        return string.Empty;
+        return id.ToString();
     }
     
-    private static List<SearchResult> GetSearchResults(Dictionary<MongoId, string>  matchList)
+    private static List<SearchResult> GetSearchResults(Dictionary<string, string>  matchList)
     {
         var results = new List<SearchResult>();
         foreach (var match in matchList)
@@ -167,5 +206,11 @@ public class SearchService(
         }
         
         return results;
+    }
+    
+    private static List<SearchResult> GetSearchResults(Dictionary<MongoId, string>  matchList)
+    {
+        var strDict = matchList.ToDictionary(pair => pair.Key.ToString(), pair => pair.Value);
+        return GetSearchResults(strDict);
     }
 }

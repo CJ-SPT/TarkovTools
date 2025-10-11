@@ -44,14 +44,15 @@
     [Parameter]
     public required TraderEditor TraderEditor { get; init; }
 
-    private TraderBase? TraderBase => TraderEditor.SelectedTrader?.Base;
-    private bool InsuranceAvailable => TraderBase?.Insurance?.Availability ?? false;
-    private int MinReturnHour => TraderBase?.Insurance?.MinReturnHour ?? 0;
-    private int MaxReturnHour => TraderBase?.Insurance?.MaxReturnHour ?? 0;
-    private double MaxStorageTime => TraderBase?.Insurance?.MaxStorageTime ?? 0;
-    private int MinPayment => TraderBase?.Insurance?.MinPayment ?? 0;
+    private TraderInsurance? Insurance => TraderEditor.SelectedTrader?.Base.Insurance;
     
-    private List<MongoId> InsuranceExcludeCategories => TraderEditor.SelectedTrader?.Base?.Insurance?.ExcludedCategory ?? [];
+    private bool InsuranceAvailable => Insurance?.Availability ?? false;
+    private int MinReturnHour => Insurance?.MinReturnHour ?? 0;
+    private int MaxReturnHour => Insurance?.MaxReturnHour ?? 0;
+    private double MaxStorageTime => Insurance?.MaxStorageTime ?? 0;
+    private int MinPayment => Insurance?.MinPayment ?? 0;
+    
+    private List<MongoId> InsuranceExcludeCategories => TraderEditor.SelectedTrader?.Base.Insurance?.ExcludedCategory ?? [];
     private readonly List<string> _insuranceLocalizedDisplay = [];
     
     private SearchResult? _parentSearchResult = null!;

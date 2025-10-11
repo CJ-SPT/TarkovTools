@@ -6,8 +6,8 @@ using TarkovTools.Services;
 namespace TarkovTools;
 
 [Injectable(TypePriority = OnLoadOrder.PostDBModLoader + 1)]
-public class TarkovTools(
-    ISptLogger<TarkovTools> logger, 
+public class TarkovToolsMod(
+    ISptLogger<TarkovToolsMod> logger, 
     CacheService cacheService,
     SearchService searchService
     ) : IOnLoad

@@ -5,7 +5,7 @@
 
 @inject SearchService SearchService;
 @inject DatabaseService Database;
-@inject ISptLogger<TarkovTools> Logger;
+@inject ISptLogger<TarkovToolsMod> Logger;
 
 <MudItem xs="BreakPoint" sm="BreakPoint" md="BreakPoint" Class="px-1">
     <MudText Typo="Typo.subtitle2" Class="mt-2">@HeaderText</MudText>
@@ -15,9 +15,9 @@
             <MudListItem>
                 <MudGrid>
                     <MudItem xs="10" sm="10" md="10">
-                        <MudText>@GetLocalizedEntry(item)</MudText>
+                        <MudText Style="font-size: 12px">@GetLocalizedEntry(item)</MudText>
                     </MudItem>
-                    <MudItem xs="2" sm="2" md="2">
+                    <MudItem xs="1" sm="1" md="1">
                         <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
                                        OnClick="@(() => Items.Remove(item))"
                                        Color="Color.Error"/>
@@ -85,8 +85,10 @@
     
     private void AddEntry()
     {
-        if (_searchResult is null ||
-            Items.Contains(_searchResult.Id)) return;
+        if (_searchResult is null || Items.Contains(_searchResult.Id))
+        {
+            return;
+        }
         
         Items.Add(_searchResult.Id);
         
@@ -104,10 +106,11 @@
         switch (SearchType)
         {
             case SearchResultType.Item:
+                return SearchService.GetLocalizedName(id);
             case SearchResultType.ItemParent:
-                return SearchService.GetLocalizedName(id);
+                return SearchService.GetLocalizedParentName(id);
             case SearchResultType.Trader:
-                return SearchService.GetLocalizedName(id);
+                return SearchService.GetLocalizedNickname(id);
             default:
                 throw new ArgumentOutOfRangeException();
         }
