@@ -55,13 +55,21 @@
 
     private void OnPresetSelected()
     {
-        if (!string.IsNullOrEmpty(_selectedPreset))
+        if (string.IsNullOrEmpty(_selectedPreset))
+        {
+            return;
+        }
+        
+        if (PresetService.SelectPreset(_selectedPreset))
         {
             SettingsService.Settings.SelectedPreset = _selectedPreset;
             SettingsService.SaveSettings();
-
+                
             Snackbar.Add($"`{_selectedPreset}` set as the active preset.", Severity.Success);
+            return;
         }
+            
+        Snackbar.Add($"`{_selectedPreset}` was not set as the active preset. Please check the log.", Severity.Error);
     }
 
     private void OnSavePreset()

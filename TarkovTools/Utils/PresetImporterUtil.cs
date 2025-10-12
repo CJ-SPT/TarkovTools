@@ -42,31 +42,4 @@ public class PresetImporterUtil(
         
         return result;
     }
-
-    /// <summary>
-    ///     Loads all the relevant data for a preset
-    /// </summary>
-    /// <param name="preset">Preset to load the data for</param>
-    public void LoadPreset(TarkovToolsPreset preset)
-    {
-        ImportTraders(preset);
-    }
-    
-    private void ImportTraders(TarkovToolsPreset preset)
-    {
-        foreach (var id in preset.TraderPreset.AlteredTraders)
-        {
-            var traderPath = Path.Combine(preset.RootPath, "traders", $"{id.ToString()}.json");
-            var trader = Import<Trader>(traderPath);
-            preset.TraderPreset.PresetTraders.Add(trader);
-        }
-    }
-
-    private T Import<T>(string path)
-    {
-        var text = fileUtil.ReadFile(path);
-        var t = jsonUtil.Deserialize<T>(text);
-
-        return t ?? throw new Exception($"[TarkovTools] {path} could not be deserialized");
-    }
 }

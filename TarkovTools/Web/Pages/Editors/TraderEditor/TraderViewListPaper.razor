@@ -122,9 +122,10 @@
             return;
         }
         
-        // Add the trader to the modified trader list
-        var preset = PresetService.SelectedPreset.TraderPreset;
-        preset.AlteredTraders.Add(selectedTrader.Base.Id);
+        // Update and save the preset
+        var traderPreset = PresetService.SelectedPreset.TraderPreset;
+        traderPreset.Traders[selectedTrader.Base.Id] = selectedTrader;
+        PresetService.SavePreset(PresetService.SelectedPreset);
         
         // Update the trader in the server database
         traders[selectedTrader.Base.Id] = selectedTrader;

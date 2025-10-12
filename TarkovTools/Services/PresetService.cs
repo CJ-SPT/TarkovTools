@@ -1,5 +1,6 @@
 ﻿using SPTarkov.DI.Annotations;
 using SPTarkov.Server.Core.Models.Utils;
+using SPTarkov.Server.Core.Services;
 using SPTarkov.Server.Core.Utils;
 using TarkovTools.Models.Presets;
 using TarkovTools.Utils;
@@ -9,6 +10,7 @@ namespace TarkovTools.Services;
 [Injectable(InjectionType.Singleton)]
 public class PresetService(
     ISptLogger<PresetService> logger,
+    DatabaseService databaseService,
     SettingsService settingsService,
     PresetImporterUtil presetImporterUtil,
     PathUtil pathUtil,
@@ -44,6 +46,9 @@ public class PresetService(
             if (LoadedPresets.TryGetValue(settingsService.Settings.SelectedPreset, out var preset))
             {
                 SelectedPreset = preset;
+                UpdateDatabase(preset);
+                
+                logger.Success($"[TarkovTools] Preset {preset.Name} applied");
             }
         }
         
@@ -58,7 +63,7 @@ public class PresetService(
             Version = 1,
             TraderPreset = new TraderPreset
             {
-                AlteredTraders = []
+                Traders = []
             }
         };
         
@@ -78,16 +83,7 @@ public class PresetService(
         return true;
 
     }
-
-    /// <summary>
-    ///     Selects the provided preset
-    /// </summary>
-    /// <param name="preset">preset to select</param>
-    public void SelectPreset(TarkovToolsPreset preset)
-    {
-        SelectedPreset = preset;
-    }
-
+    
     /// <summary>
     ///     Selects the provided preset by name
     /// </summary>
@@ -98,10 +94,13 @@ public class PresetService(
         if (LoadedPresets.TryGetValue(name, out var preset))
         {
             SelectedPreset = preset;
+            UpdateDatabase(preset);
+            
+            logger.Success($"[TarkovTools] Preset {preset.Name} applied");
             return true;
         }
         
-        logger.Warning($"Could not find preset with name {name}");
+        logger.Warning($"[TarkovTools] Could not find preset with name: {name}");
         return false;
     }
     
@@ -130,6 +129,8 @@ public class PresetService(
         
         var json =  jsonUtil.Serialize(preset, true);
         File.WriteAllText(Path.Combine(pathUtil.PresetPath, preset.Name, "preset.json"), json);
+        
+        logger.Success($"[TarkovTools] Preset {preset.Name} saved");
     }
     
     /// <summary>
@@ -168,6 +169,30 @@ public class PresetService(
         {
             settingsService.Settings.SelectedPreset = string.Empty;
             settingsService.SaveSettings();
+            
+            logger.Warning($"[TarkovTools] Preset {preset.Name} deleted, please restart the server.");
+        }
+    }
+
+    private void UpdateDatabase(TarkovToolsPreset preset)
+    {
+        UpdateTraders(preset);
+    }
+
+    private void UpdateTraders(TarkovToolsPreset preset)
+    {
+        var presetTraders = preset.TraderPreset.Traders;
+        var dbTraders = databaseService.GetTraders();
+        
+        foreach (var (presetId, presetTrader) in presetTraders)
+        {
+            foreach (var (databaseId, _) in dbTraders)
+            {
+                if (presetId == databaseId)
+                {
+                    dbTraders[presetId] = presetTrader;
+                }
+            }
         }
     }
 }
