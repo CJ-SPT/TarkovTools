@@ -16,7 +16,7 @@ public class TarkovToolsMod(
     public const string Version = "0.1.0";
     public const string SptVersion = "~4.0";
     
-    public Task OnLoad()
+    public async Task OnLoad()
     {
         try
         {
@@ -25,7 +25,7 @@ public class TarkovToolsMod(
             
             cacheService.Hydrate();
             searchService.CacheSearchIndexes();
-            presetService.Initialize();
+            await presetService.ImportPresets();
             
             logger.Success($"[TarkovTools] {Version} for SPT: {SptVersion} loaded.");
             logger.Success("[TarkovTools] Visit: https://127.0.0.1:6969/tarkovtools to get started");
@@ -35,7 +35,5 @@ public class TarkovToolsMod(
             logger.Critical("[TarkovTools] Encountered a critical error and couldn't be loaded", e);
             throw;
         }
-        
-        return Task.CompletedTask;
     }
 }

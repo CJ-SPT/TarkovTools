@@ -18,51 +18,18 @@ public class ChangeTrackerService(
     public Dictionary<string, IChangeTracker> TrackedChanges { get; private set; } = [];
 
     /// <summary>
-    ///     Track an object
+    ///     Track an object, if it already exists untrack it and start fresh
     /// </summary>
     /// <param name="obj">object to track</param>
     /// <param name="id">id to assign to store it</param>
     /// <typeparam name="T">type of object</typeparam>
     public void TrackObject<T>(T obj, string id)
     {
-        if (TrackedChanges.ContainsKey(id))
-        {
-            logger.Warning("Trying to track an already tracked object.");
-            return;
-        }
-
-        try
-        {
-            var tracker = new ChangeTracker<T>(obj, jsonUtil);
-            if (!TrackedChanges.TryAdd(id, tracker))
-            {
-                logger.Error($"[TarkovTools] object with id: {id} was not tracked.");
-            }
-        }
-        catch (Exception e)
-        {
-            logger.Error($"[TarkovTools] Exception caught when adding tracked object with id: {id}", e);
-        }
+        TrackedChanges.Remove(id);
+        var tracker = new ChangeTracker<T>(obj, jsonUtil);
+        TrackedChanges.Add(id, tracker);
     }
-
-    /// <summary>
-    ///     Untrack an object
-    /// </summary>
-    /// <param name="id">Id of the object to track</param>
-    /// <returns>True if untracked, false if it wasn't tracked</returns>
-    public bool UnTrackObject(string id)
-    {
-        if (TrackedChanges.Remove(id))
-        {
-            if (logger.IsLogEnabled(LogLevel.Debug))
-                logger.Warning($"[TarkovTools] UnTracked object with id: {id}");
-            
-            return true;
-        }
-        
-        return false;
-    }
-
+    
     /// <summary>
     ///     Does the provided object have changes?
     /// </summary>

@@ -11,9 +11,9 @@
 
     <ItemGroup>
         <PackageReference Include="MudBlazor" Version="8.13.0" />
-        <PackageReference Include="SPTarkov.DI" Version="4.0.0-pre.20251010.1631" />
-        <PackageReference Include="SPTarkov.Server.Core" Version="4.0.0-pre.20251007.1604" />
-        <PackageReference Include="SPTarkov.Server.Web" Version="4.0.0-pre.20251007.1604" />
+        <PackageReference Include="SPTarkov.DI" Version="4.0.0" />
+        <PackageReference Include="SPTarkov.Server.Core" Version="4.0.0" />
+        <PackageReference Include="SPTarkov.Server.Web" Version="4.0.0" />
     </ItemGroup>
 
     <ItemGroup>
@@ -39,7 +39,7 @@
     <PropertyGroup>
         <!-- $(SolutionDir)..\..\SPT\user\mods -->
         <!-- G:\Development\SPT\server-csharp\SPTarkov.Server\bin\Debug\net9.0\user\mods -->
-        <ServerModDir Condition = " $(ServerModDir) == '' ">G:\Development\SPT\server-csharp\SPTarkov.Server\bin\Debug\net9.0\user\mods</ServerModDir>
+        <ServerModDir Condition = " $(ServerModDir) == '' ">$(SolutionDir)..\..\SPT\user\mods</ServerModDir>
     </PropertyGroup>
     
     <Target Name="CopyToServer" AfterTargets="PostBuildEvent">

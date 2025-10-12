@@ -10,16 +10,19 @@ namespace TarkovTools.Services;
 public class PresetService(
     ISptLogger<PresetService> logger,
     SettingsService settingsService,
+    PresetImporterUtil presetImporterUtil,
     PathUtil pathUtil,
     JsonUtil jsonUtil
     )
 {
-    public List<TarkovToolsPreset> LoadedPresets { get; } = [];
+    public Dictionary<string, TarkovToolsPreset> LoadedPresets { get; private set; } = [];
+    
+    public bool IsPresetLoaded => SelectedPreset != null;
     public TarkovToolsPreset? SelectedPreset { get; private set; }
     
     private bool _initialized;
     
-    public void Initialize()
+    public async Task ImportPresets()
     {
         if (_initialized)
         {
@@ -29,35 +32,51 @@ public class PresetService(
         if (!Directory.Exists(pathUtil.PresetPath))
         {
             Directory.CreateDirectory(pathUtil.PresetPath);
+            _initialized = true;
+            return;
         }
-        
-        LoadPresets();
 
-        if (!string.IsNullOrEmpty(settingsService.Settings?.SelectedPreset))
+        LoadedPresets = await presetImporterUtil.LoadPresetDefinitions();
+
+        // Check if the default preset is present and apply it
+        if (!string.IsNullOrEmpty(settingsService.Settings.SelectedPreset))
         {
-            var preset = LoadedPresets.FirstOrDefault(x => x.Name == settingsService.Settings.SelectedPreset);
-            SelectedPreset = preset;
+            if (LoadedPresets.TryGetValue(settingsService.Settings.SelectedPreset, out var preset))
+            {
+                SelectedPreset = preset;
+            }
         }
         
         _initialized = true;
     }
 
-    public TarkovToolsPreset CreatePreset(string name, bool select = false)
+    public bool CreatePreset(string name, bool select = false)
     {
         var result = new TarkovToolsPreset
         {
             Name = name,
+            Version = 1,
+            TraderPreset = new TraderPreset
+            {
+                AlteredTraders = []
+            }
         };
         
-        LoadedPresets.Add(result);
+        if (!LoadedPresets.TryAdd(name, result))
+        {
+            logger.Error($"[TarkovTools] preset `{name}` already exists");
+            return false;
+        }
+        
         SavePreset(result);
         
         if (select)
         {
             SelectedPreset = result;
         }
-        
-        return result;
+            
+        return true;
+
     }
 
     /// <summary>
@@ -76,67 +95,16 @@ public class PresetService(
     /// <returns>True if selected</returns>
     public bool SelectPreset(string name)
     {
-        var preset = LoadedPresets.FirstOrDefault(x => x.Name == name);
-        if (preset is null)
+        if (LoadedPresets.TryGetValue(name, out var preset))
         {
-            logger.Warning($"Could not find preset with name {name}");
-            return false;
+            SelectedPreset = preset;
+            return true;
         }
         
-        SelectedPreset = preset;
-        return true;
+        logger.Warning($"Could not find preset with name {name}");
+        return false;
     }
     
-    /// <summary>
-    ///     Loads all presets from disk
-    /// </summary>
-    public void LoadPresets()
-    {
-        var directories =  Directory.GetDirectories(pathUtil.PresetPath);
-        if (directories.Length == 0)
-        {
-            logger.Warning("[TarkovTools] No presets found, consider creating or installing one. Mods features will be limited until you do so.");
-            return;
-        }
-        
-        foreach (var directory in directories)
-        {
-            var presetJson = File.ReadAllText(Path.Combine(directory, "Preset.json"));
-            var preset = jsonUtil.Deserialize<TarkovToolsPreset>(presetJson);
-
-            if (preset is null)
-            {
-                logger.Error($"[TarkovTools] Preset: {presetJson} could not be deserialized");
-                continue;
-            }
-            
-            LoadedPresets.Add(preset);
-        }
-
-        // Set the selected preset
-        switch (LoadedPresets.Count)
-        {
-            // No loaded presets
-            case 0:
-                logger.Error("[TarkovTools] No presets found after loading...");
-                return;
-            // Use the first preset loaded when the selected preset doesn't exist
-            case 1 when string.IsNullOrEmpty(settingsService.Settings.SelectedPreset):
-                SelectedPreset = LoadedPresets[0];
-                settingsService.Settings.SelectedPreset = SelectedPreset.Name;
-                break;
-            // Set the users selected preset
-            default:
-                if (!string.IsNullOrEmpty(settingsService.Settings.SelectedPreset))
-                {
-                    SelectPreset(settingsService.Settings.SelectedPreset);
-                }
-                break;
-        }
-        
-        logger.Info($"[TarkovTools] Loaded {LoadedPresets.Count} presets");
-    }
-
     public void SavePresets()
     {
         if (LoadedPresets.Count == 0)
@@ -144,7 +112,7 @@ public class PresetService(
             return;
         }
         
-        foreach (var preset in LoadedPresets)
+        foreach (var (_, preset) in LoadedPresets)
         {
             SavePreset(preset);
         }
@@ -163,10 +131,28 @@ public class PresetService(
         var json =  jsonUtil.Serialize(preset, true);
         File.WriteAllText(Path.Combine(pathUtil.PresetPath, preset.Name, "preset.json"), json);
     }
-
-    public void DeletePreset(TarkovToolsPreset preset)
+    
+    /// <summary>
+    ///     Deletes a preset
+    /// </summary>
+    /// <param name="name">preset name to remove</param>
+    /// <returns>True if deleted</returns>
+    public bool DeletePreset(string name)
     {
-        LoadedPresets.Remove(preset);
+        if (LoadedPresets.Remove(name, out var preset))
+        {
+            DeletePreset(preset);
+        }
+        
+        return true;
+    }
+    
+    /// <summary>
+    ///     Handles removing all references to the deleted preset
+    /// </summary>
+    /// <param name="preset">preset to delete</param>
+    private void DeletePreset(TarkovToolsPreset preset)
+    {
         if (SelectedPreset?.Name == preset.Name)
         {
             SelectedPreset = null;
@@ -183,17 +169,5 @@ public class PresetService(
             settingsService.Settings.SelectedPreset = string.Empty;
             settingsService.SaveSettings();
         }
-    }
-    
-    public bool DeletePreset(string name)
-    {
-        var preset = LoadedPresets.FirstOrDefault(x => x.Name == name);
-        if (preset is null)
-        {
-            return false;
-        }
-        
-        DeletePreset(preset);
-        return true;
     }
 }

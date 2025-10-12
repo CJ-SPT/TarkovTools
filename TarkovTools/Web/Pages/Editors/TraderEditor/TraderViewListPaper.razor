@@ -1,66 +1,61 @@
 ﻿@using SPTarkov.Server.Core.Models.Common
 @using SPTarkov.Server.Core.Models.Eft.Common.Tables
-@using SPTarkov.Server.Core.Models.Spt.Logging
 @using SPTarkov.Server.Core.Models.Utils
-@using SPTarkov.Server.Core.Utils
+@using SPTarkov.Server.Core.Services
+@using SPTarkov.Server.Core.Utils.Cloners
 @using Path = System.IO.Path
 
 @inject ISptLogger<TarkovToolsMod> Logger;
+@inject DatabaseService DatabaseService;
 @inject SearchService SearchService;
+@inject PresetService PresetService;
 @inject ChangeTrackerService ChangeTracker;
-@inject FileUtil FileUtil;
-@inject JsonUtil JsonUtil;
+@inject ICloner Cloner;
+@inject ISnackbar Snackbar;
 
 <MudPaper Elevation="2" Class="pa-3" Style="margin-left: 20px; height: calc(100vh - 100px); position: sticky; top: 14px; overflow-y: auto; min-width: 240px;">
-    <MudText Typo="Typo.subtitle1">Trader Templates</MudText>
-    <MudList Dense="true" Class="mt-2" T="string">
-        @foreach (var trader in TraderEditor.GetTraders())
-        {
-            var fileName = Path.GetFileNameWithoutExtension(trader.Value.Base.Avatar);
-            var path = $"/tarkovtools/images/traders/{fileName}.png";
-            
-            Console.WriteLine(path);
-            <MudListItem Text="@SearchService.GetLocalizedNickname(trader.Key)" 
-                         OnClick="@(() => SelectTrader(trader.Key))">
-                <AvatarContent>
-                    <MudAvatar>
-                        <MudImage Src="@path"/>
-                    </MudAvatar>
-                </AvatarContent>
-            </MudListItem>
-        }
-    </MudList>
+    <MudTabs Elevation="0" Centered="true" MinimumTabWidth="30%" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-1" Style="min-width: 240px">
+        <MudTabPanel Text="Templates" Style="font-size: 12px;">
+            <MudList Dense="true" T="string">
+                @foreach (var trader in TraderEditor.GetTraders())
+                {
+                    var fileName = Path.GetFileNameWithoutExtension(trader.Value.Base.Avatar);
+                    var path = $"/tarkovtools/images/traders/{fileName}.png";
+                    
+                    Console.WriteLine(path);
+                    <MudListItem Text="@SearchService.GetLocalizedNickname(trader.Key)" 
+                                 OnClick="@(() => SelectTrader(trader.Key))">
+                        <AvatarContent>
+                            <MudAvatar Size="Size.Medium">
+                                <MudImage Src="@path"/>
+                            </MudAvatar>
+                        </AvatarContent>
+                    </MudListItem>
+                }
+            </MudList>
+        </MudTabPanel>
+        
+        <MudTabPanel Text="My Traders" Style="font-size: 12px;">
+            <MudList Dense="true" T="string">
+                @* Add your custom traders list here *@
+                <MudText Typo="Typo.body2" Class="pa-2">No custom traders yet</MudText>
+            </MudList>
+        </MudTabPanel>
+    </MudTabs>
     
     <MudDivider Class="my-2"/>
     
     <MudButtonGroup Color="MudBlazor.Color.Primary">
-        <MudButton Variant="Variant.Text" FullWidth="true"
-                   Color="MudBlazor.Color.Primary" OnClick="@(() => CreateNewTrader())">
-            Create New Trader
+        
+        <MudButton Variant="Variant.Text" 
+                   FullWidth="true"
+                   Color="MudBlazor.Color.Primary" 
+                   OnClick="@(() => SaveChanges(TraderEditor.SelectedTrader))">
+            Save Changes
         </MudButton>
-        <MudButton Variant="Variant.Text" FullWidth="true"
-                   Color="MudBlazor.Color.Primary" OnClick="@(() => CreateNewTraderFromTemplate())">
-            Create New From Template
-        </MudButton>
+        
     </MudButtonGroup>
-    
-    <MudDivider Class="my-2"/>
-
-    <MudButton Variant="Variant.Text" FullWidth="true"
-               Color="MudBlazor.Color.Primary" OnClick="@(() => LoadTrader())">
-        Load Trader
-    </MudButton>
-
-    <MudButton Variant="Variant.Text" FullWidth="true"
-               Disabled="TraderEditor.SelectedTrader is null"
-               Color="MudBlazor.Color.Primary" OnClick="@(() => ExportTrader())">
-        Export Trader
-    </MudButton>
 </MudPaper>
-
-<ImportTraderOverlay Show="ShowTraderImportOverlay"
-                     TraderViewListPaper="this"
-                     TraderEditor="TraderEditor"/>
 
 @code {
     [Parameter]
@@ -73,187 +68,78 @@
     public required IDialogService DialogService { get; set; }
 
     private Trader? _selectedTraderInList;
-
-    public bool ShowTraderImportOverlay { get; set; }
     
-    private async Task SelectTrader(MongoId id)
+    private void SelectTrader(MongoId id)
     {
         if (!TraderEditor.GetTraders().TryGetValue(id, out var trader))
         {
-            Logger.Error($"[TarkovTools] Could not find tid `{id}` in database");
-            await CreateNewTrader();
+            Logger.Error($"[TarkovTools] Could not find tid `{id}` in database when a selecting trader template");
             return;
         }
 
+        if (TraderEditor.SelectedTrader != null)
+        {
+            SaveChanges(TraderEditor.SelectedTrader);
+        }
+        
+        // Clone the trader so we don't modify it until we save
+        TraderEditor.SelectedTrader = Cloner.Clone(trader);
+
+        // Track the new selected trader
+        ChangeTracker.TrackObject(TraderEditor.SelectedTrader, "SelectedTrader");
+        
+        RefreshAction.Invoke();
+        TraderEditor.InvokeTraderChanged();
+        
         _selectedTraderInList = trader;
         StateHasChanged();
     }
-
-    private async Task CreateNewTraderFromTemplate()
+    
+    private void SaveChanges(Trader? selectedTrader)
     {
-        if (_selectedTraderInList is null)
+        if (selectedTrader is null)
         {
-            _ = await DialogService.ShowMessageBox(
-                "No Template Selected", 
-                "You have not selected a trader template.",
-                yesText:"Ok");
             return;
         }
-
-        if (await ShouldSaveChanges())
+        
+        if (PresetService.SelectedPreset is null)
         {
-            // TODO: Export
-            Logger.Warning("[TarkovTools] EXPORT NOT IMPLEMENTED");
+             Logger.Warning("[TarkovTools] Can't save trader changes when no preset is loaded."); 
+             return;
+        }
+        
+        // Set the current traders information in the database
+        var traders = DatabaseService.GetTraders();
+        if (!traders.ContainsKey(selectedTrader.Base.Id))
+        {
+            Logger.Error("[TarkovTools] Could not find selected trader in database."); 
             return;
         }
-
-        var name = SearchService.GetLocalizedNickname(_selectedTraderInList!.Base.Id);
-        var result = await DialogService.ShowMessageBox(
-            "Create From Template", 
-            $"Use {name} as a template?",
-            yesText:"Yes", noText: "Cancel");
-
-        // Create the templated trader
-        if (result != null && result.Value)
+        
+        if (!HasChanges())
         {
-            var traderText = JsonUtil.Serialize(_selectedTraderInList);
-            TraderEditor.SelectedTrader = JsonUtil.Deserialize<Trader>(traderText);
-            TraderEditor.SelectedTrader!.Base.Id = new MongoId();
-
-            TrackTrader();
-            
-            if (Logger.IsLogEnabled(LogLevel.Debug))
-                Logger.Debug($"Created trader {TraderEditor.SelectedTrader!.Base.Id}");
-            
-            RefreshAction.Invoke();
-            TraderEditor.InvokeTraderChanged();
+            Logger.Warning("[TarkovTools] There is nothing to save."); 
+            return;
         }
+        
+        // Add the trader to the modified trader list
+        var preset = PresetService.SelectedPreset.TraderPreset;
+        preset.AlteredTraders.Add(selectedTrader.Base.Id);
+        
+        // Update the trader in the server database
+        traders[selectedTrader.Base.Id] = selectedTrader;
+        
+        Logger.Success($"[TarkovTools] Trader {selectedTrader.Base.Id} changes saved");
+        Snackbar.Add("Changes saved.", Severity.Success);
     }
     
-    private async Task CreateNewTrader()
-    {
-        if (await ShouldSaveChanges())
-        {
-            // TODO: Export
-            Logger.Warning("[TarkovTools] EXPORT NOT IMPLEMENTED");
-            return;
-        }
-        
-        var result = await DialogService.ShowMessageBox(
-            "Create New Trader", 
-            "Are you sure? Any unsaved progress will be lost.",
-            yesText:"Create", cancelText:"Cancel");
-        
-        if (result != null && result.Value)
-        {
-            TraderEditor.SelectedTrader = new Trader
-            {
-                Assort = new TraderAssort
-                {
-                    Items = [],
-                    BarterScheme = [],
-                    LoyalLevelItems = []
-                },
-                Base = new TraderBase
-                {
-                    Id = new MongoId()
-                },
-                Dialogue = [],
-                QuestAssort = [],
-                Suits = [],
-                Services = []
-            };
-            
-            TrackTrader();
-            TraderEditor.InvokeTraderChanged();
-            StateHasChanged();
-        }
-    }
-    
-    private async Task LoadTrader()
-    {
-        var result = await DialogService.ShowMessageBox(
-            "Import Trader", 
-            "Are you sure? Any unsaved progress will be lost.",
-            yesText:"Import", cancelText:"Cancel");
-
-        if (result is null || !result.Value)
-        {
-            return;
-        }
-        
-        ShowTraderImportOverlay = !ShowTraderImportOverlay;
-    }
-
     /// <summary>
-    ///     Check if the selected trader is null, if it is return true. If selected trader is not null prompt the
-    /// user to continue. If they say yes, then return true, otherwise false
+    ///     Check if there are any changes
     /// </summary>
-    /// <returns></returns>
-    private async Task<bool> ShouldSaveChanges()
+    /// <returns>True if there are changes</returns>
+    private bool HasChanges()
     {
         var selectedTrader = TraderEditor.SelectedTrader;
-        
-        Logger.Debug("ShouldSaveChanges");
-        
-        // No trader selected or no changes
-        if (selectedTrader is null || !ChangeTracker.HasChanges(selectedTrader, "SelectedTrader"))
-        {
-            Logger.Debug("ShouldNotSaveEarly");
-            // Nothing to save
-            return false;
-        }
-        
-        var currName = SearchService.GetLocalizedNickname(selectedTrader.Base.Id);
-        var overwriteResult = await DialogService.ShowMessageBox(
-            "You have unsaved changes", 
-            $"Save changes to: {currName}?",
-            yesText:"Yes", noText: "Cancel");
-
-        var result = overwriteResult != null && overwriteResult.Value;
-        Logger.Debug(result ? "ShouldSave" : "ShouldNotSave");
-        return result;
-
-    }
-
-    private void TrackTrader()
-    {
-        const string objectTrackingId = "SelectedTrader";
-        // Free any currently tracked object then track our new object
-        ChangeTracker.UnTrackObject(objectTrackingId);
-        // Track the objects current state to compare later, make sure we do this after we change the Id
-        ChangeTracker.TrackObject(TraderEditor.SelectedTrader, objectTrackingId);
-    }
-    
-    private async Task ExportTrader()
-    {
-        //var directory = await DialogueService.PickDirectory("Choose path");
-        
-        //await CreateTraderFilesForExport(directory);
-    }
-
-    private async Task CreateTraderFilesForExport(string path)
-    {
-        if (TraderEditor.SelectedTrader?.Base is null)
-        {
-            Logger.Error("Trader base was null during export");
-            return;
-        }
-
-        var baseText = JsonUtil.Serialize(TraderEditor.SelectedTrader.Base, true);
-
-        if (TraderEditor.SelectedTrader?.Assort is null)
-        {
-            Logger.Error("Trader Assort was null during export");
-            return;
-        }
-
-        var assortText = JsonUtil.Serialize(TraderEditor.SelectedTrader.Assort, true);
-
-        var basePath = Path.Combine(path, "base.json");
-        var assortPath = Path.Combine(path, "assort.json");
-
-        await FileUtil.WriteFileAsync(basePath, baseText!);
-        await FileUtil.WriteFileAsync(assortPath, assortText!);
+        return selectedTrader != null && ChangeTracker.HasChanges(selectedTrader, "SelectedTrader");
     }
 }

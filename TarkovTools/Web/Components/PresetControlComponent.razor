@@ -45,7 +45,7 @@
 @code {
     private string _selectedPreset;
 
-    private List<string> LoadedPresets => PresetService.LoadedPresets.Select(preset => preset.Name).ToList();
+    private List<string> LoadedPresets => PresetService.LoadedPresets.Keys.ToList();
 
     protected override void OnInitialized()
     {
