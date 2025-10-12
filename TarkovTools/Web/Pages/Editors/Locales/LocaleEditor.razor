@@ -1,0 +1,143 @@
+﻿@page "/tarkovtools/locale-editor"
+@layout BaseLayout;
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">Locale Editor</MudText>
+
+    <MudPaper Class="pa-4 mb-4">
+        <MudGrid>
+            <MudItem xs="12" sm="5">
+                <MudTextField @bind-Value="newKey" Label="Key" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" sm="5">
+                <MudTextField @bind-Value="newValue" Label="Value" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" sm="2" Class="d-flex align-center">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" 
+                           OnClick="AddLocale" FullWidth="true"
+                           Disabled="@(string.IsNullOrWhiteSpace(newKey) || string.IsNullOrWhiteSpace(newValue))">
+                    Add
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <MudTable Items="@locales" Hover="true" Breakpoint="Breakpoint.Sm" Dense="true">
+        <HeaderContent>
+            <MudTh>Key</MudTh>
+            <MudTh>Value</MudTh>
+            <MudTh Style="width: 150px;">Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Key">
+                @if (editingKey == context.Key)
+                {
+                    <MudTextField @bind-Value="editKey" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                }
+                else
+                {
+                    <MudText>@context.Key</MudText>
+                }
+            </MudTd>
+            <MudTd DataLabel="Value">
+                @if (editingKey == context.Key)
+                {
+                    <MudTextField @bind-Value="editValue" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                }
+                else
+                {
+                    <MudText>@context.Value</MudText>
+                }
+            </MudTd>
+            <MudTd DataLabel="Actions">
+                @if (editingKey == context.Key)
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.Check" Color="Color.Success" 
+                                   Size="Size.Small" OnClick="@(() => SaveEdit(context.Key))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Default" 
+                                   Size="Size.Small" OnClick="CancelEdit" />
+                }
+                else
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" 
+                                   Size="Size.Small" OnClick="@(() => StartEdit(context.Key, context.Value))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" 
+                                   Size="Size.Small" OnClick="@(() => DeleteLocale(context.Key))" />
+                }
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+
+    @if (!locales.Any())
+    {
+        <MudPaper Class="pa-4 mt-4">
+            <MudText Align="Align.Center" Color="Color.Secondary">No locale entries yet. Add your first entry above.</MudText>
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    private Dictionary<string, string> locales = new();
+    private string newKey = string.Empty;
+    private string newValue = string.Empty;
+    private string? editingKey = null;
+    private string editKey = string.Empty;
+    private string editValue = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        // Sample data - remove this in production
+        locales.Add("welcome_message", "Welcome to our application");
+        locales.Add("login_button", "Login");
+        locales.Add("logout_button", "Logout");
+    }
+
+    private void AddLocale()
+    {
+        if (string.IsNullOrWhiteSpace(newKey) || string.IsNullOrWhiteSpace(newValue))
+            return;
+
+        if (locales.ContainsKey(newKey))
+        {
+            // Handle duplicate key - you could use MudBlazor Snackbar here
+            return;
+        }
+
+        locales.Add(newKey, newValue);
+        newKey = string.Empty;
+        newValue = string.Empty;
+    }
+
+    private void StartEdit(string key, string value)
+    {
+        editingKey = key;
+        editKey = key;
+        editValue = value;
+    }
+
+    private void SaveEdit(string originalKey)
+    {
+        if (string.IsNullOrWhiteSpace(editKey) || string.IsNullOrWhiteSpace(editValue))
+            return;
+
+        locales.Remove(originalKey);
+        locales.Add(editKey, editValue);
+        CancelEdit();
+    }
+
+    private void CancelEdit()
+    {
+        editingKey = null;
+        editKey = string.Empty;
+        editValue = string.Empty;
+    }
+
+    private void DeleteLocale(string key)
+    {
+        locales.Remove(key);
+        if (editingKey == key)
+        {
+            CancelEdit();
+        }
+    }
+}

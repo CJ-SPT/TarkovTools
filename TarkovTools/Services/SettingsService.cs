@@ -51,8 +51,6 @@ public class SettingsService
         
         var json = _jsonUtil.Serialize(Settings, true);
         File.WriteAllText(_pathUtil.SettingsJsonPath, json);
-        
-        _logger.Info("[TarkovTools] Settings file created.");
     }
 
     public TarkovToolsSettings? LoadSettings()

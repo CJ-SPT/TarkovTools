@@ -86,10 +86,17 @@ public class PresetService(
     /// <returns>True if selected</returns>
     public bool SelectPreset(string name)
     {
+        if (string.IsNullOrEmpty(name))
+        {
+            return false;
+        }
+        
         if (LoadedPresets.TryGetValue(name, out var preset))
         {
+            settingsService.Settings.SelectedPreset = preset.Name;
             SelectedPreset = preset;
             UpdateDatabase(preset);
+            settingsService.SaveSettings();
             
             OnPresetChanged?.Invoke();
             logger.Success($"[TarkovTools] Preset {preset.Name} applied");

@@ -40,8 +40,8 @@
         </MudNavLink>
 
         <MudNavLink IconColor="Color.Default" Icon="@Icons.Material.Filled.QuestionAnswer"
-                    Href="/tarkovtools"
-                    Disabled="true"
+                    Href="/tarkovtools/locale-editor"
+                    Disabled="!PresetService.IsPresetLoaded"
                     Match="NavLinkMatch.All">
             Locales
         </MudNavLink>
@@ -74,7 +74,7 @@
         </MudNavLink>
 
         <MudNavLink IconColor="Color.Default" Icon="@Icons.Material.Filled.AccountCircle"
-                    Href="/tarkovtools/TraderEditor"
+                    Href="/tarkovtools/trader-editor"
                     Disabled="!PresetService.IsPresetLoaded"
                     Match="NavLinkMatch.All">
             Traders
