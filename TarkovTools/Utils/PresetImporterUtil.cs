@@ -1,4 +1,5 @@
 ﻿using SPTarkov.DI.Annotations;
+using SPTarkov.Server.Core.Models.Common;
 using SPTarkov.Server.Core.Models.Eft.Common.Tables;
 using SPTarkov.Server.Core.Models.Utils;
 using SPTarkov.Server.Core.Utils;
@@ -27,7 +28,7 @@ public class PresetImporterUtil(
         var result = new Dictionary<string, TarkovToolsPreset>();
         foreach (var directory in directories)
         {
-            var presetJson = await File.ReadAllTextAsync(Path.Combine(directory, "Preset.json"));
+            var presetJson = await fileUtil.ReadFileAsync(Path.Combine(directory, "Preset.json"));
             var preset = jsonUtil.Deserialize<TarkovToolsPreset>(presetJson);
             
             if (preset is null)
@@ -37,9 +38,30 @@ public class PresetImporterUtil(
             }
             
             preset.RootPath = directory;
+            await ImportTraders(preset.TraderPreset, directory);
+            
             result.Add(preset.Name, preset);
         }
         
         return result;
+    }
+
+    private async Task ImportTraders(TraderPreset preset, string path)
+    {
+        var tradersDir = Path.Combine(path, "traders");
+
+        if (!Directory.Exists(tradersDir))
+        {
+            return;
+        }
+        
+        foreach (var file in Directory.GetFiles(tradersDir))
+        {
+            var text = await fileUtil.ReadFileAsync(file);
+            var trader =  jsonUtil.Deserialize<KeyValuePair<MongoId, Trader>>(text);
+            
+            preset.ModifiedTraders.Add(trader.Key);
+            preset.Traders.Add(trader.Key, trader.Value);
+        }
     }
 }

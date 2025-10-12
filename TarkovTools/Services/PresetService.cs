@@ -14,6 +14,7 @@ public class PresetService(
     DatabaseService databaseService,
     SettingsService settingsService,
     PresetImporterUtil presetImporterUtil,
+    PresetExporterUtil presetExporterUtil,
     PathUtil pathUtil,
     JsonUtil jsonUtil
     )
@@ -59,7 +60,7 @@ public class PresetService(
             Version = 1,
             TraderPreset = new TraderPreset
             {
-                Traders = []
+                ModifiedTraders = [],
             }
         };
         
@@ -124,15 +125,7 @@ public class PresetService(
 
     public void SavePreset(TarkovToolsPreset preset)
     {
-        // Create the preset directory if it doesn't exist
-        if (!Directory.Exists(Path.Combine(pathUtil.PresetPath, preset.Name)))
-        {
-            Directory.CreateDirectory(Path.Combine(pathUtil.PresetPath, preset.Name));
-        }
-        
-        var json =  jsonUtil.Serialize(preset, true);
-        File.WriteAllText(Path.Combine(pathUtil.PresetPath, preset.Name, "preset.json"), json);
-        
+        Task.Run(async () => await presetExporterUtil.ExportPreset(preset));
         logger.Success($"[TarkovTools] Preset {preset.Name} saved");
     }
     

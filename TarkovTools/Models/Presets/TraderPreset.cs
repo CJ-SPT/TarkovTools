@@ -7,5 +7,9 @@ namespace TarkovTools.Models.Presets;
 public record TraderPreset
 {
     public PresetType PresetType => PresetType.Trader;
-    public required Dictionary<MongoId, Trader> Traders { get; set; }
+    
+    public required HashSet<MongoId> ModifiedTraders { get; set; }
+
+    [JsonIgnore] 
+    public Dictionary<MongoId, Trader> Traders { get; } = [];
 }

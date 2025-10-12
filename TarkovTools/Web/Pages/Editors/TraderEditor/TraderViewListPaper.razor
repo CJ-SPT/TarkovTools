@@ -90,7 +90,7 @@
         StateHasChanged();
     }
     
-    private void SaveChanges(Trader? selectedTrader)
+    private async Task SaveChanges(Trader? selectedTrader)
     {
         if (selectedTrader is null)
         {
@@ -119,6 +119,7 @@
         
         // Update and save the preset
         var traderPreset = PresetService.SelectedPreset.TraderPreset;
+        traderPreset.ModifiedTraders.Add(selectedTrader.Base.Id);
         traderPreset.Traders[selectedTrader.Base.Id] = selectedTrader;
         PresetService.SavePreset(PresetService.SelectedPreset);
         
