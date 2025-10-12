@@ -1,4 +1,5 @@
-﻿using SPTarkov.DI.Annotations;
+﻿using Microsoft.AspNetCore.Components;
+using SPTarkov.DI.Annotations;
 using SPTarkov.Server.Core.Models.Utils;
 using SPTarkov.Server.Core.Services;
 using SPTarkov.Server.Core.Utils;
@@ -21,6 +22,7 @@ public class PresetService(
     
     public bool IsPresetLoaded => SelectedPreset != null;
     public TarkovToolsPreset? SelectedPreset { get; private set; }
+    public event Action? OnPresetChanged;
     
     private bool _initialized;
     
@@ -43,13 +45,7 @@ public class PresetService(
         // Check if the default preset is present and apply it
         if (!string.IsNullOrEmpty(settingsService.Settings.SelectedPreset))
         {
-            if (LoadedPresets.TryGetValue(settingsService.Settings.SelectedPreset, out var preset))
-            {
-                SelectedPreset = preset;
-                UpdateDatabase(preset);
-                
-                logger.Success($"[TarkovTools] Preset {preset.Name} applied");
-            }
+            SelectPreset(settingsService.Settings.SelectedPreset);
         }
         
         _initialized = true;
@@ -77,11 +73,10 @@ public class PresetService(
         
         if (select)
         {
-            SelectedPreset = result;
+            SelectPreset(result.Name);
         }
             
         return true;
-
     }
     
     /// <summary>
@@ -96,6 +91,7 @@ public class PresetService(
             SelectedPreset = preset;
             UpdateDatabase(preset);
             
+            OnPresetChanged?.Invoke();
             logger.Success($"[TarkovTools] Preset {preset.Name} applied");
             return true;
         }
@@ -172,6 +168,8 @@ public class PresetService(
             
             logger.Warning($"[TarkovTools] Preset {preset.Name} deleted, please restart the server.");
         }
+        
+        OnPresetChanged?.Invoke();
     }
 
     private void UpdateDatabase(TarkovToolsPreset preset)

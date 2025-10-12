@@ -1,4 +1,7 @@
-﻿@using Microsoft.AspNetCore.Components.Routing
+﻿@using SPTarkov.Server.Core.Models.Utils
+@inject PresetService PresetService
+@inject NavigationManager Navigation
+@inject ISptLogger<TarkovToolsMod> Logger;
 
 <MudNavMenu>
     <MudNavGroup Title="Main" Expanded="true">
@@ -10,59 +13,69 @@
         
         <MudNavLink IconColor="Color.Default" Icon="@Icons.Material.Filled.FactCheck"
                     Href="/tarkovtools"
+                    Disabled="true"
                     Match="NavLinkMatch.All">
             Achievements
         </MudNavLink>
 
         <MudNavLink IconColor="Color.Default" Icon="@Icons.Material.Filled.EmojiPeople"
                     Href="/tarkovtools"
+                    Disabled="true"
                     Match="NavLinkMatch.All">
             Bots
         </MudNavLink>
 
         <MudNavLink IconColor="Color.Default" Icon="@Icons.Material.Filled.SportsVolleyball"
                     Href="/tarkovtools"
+                    Disabled="true"
                     Match="NavLinkMatch.All">
             Globals
         </MudNavLink>
 
         <MudNavLink IconColor="Color.Default" Icon="@Icons.Material.Filled.LocalCafe"
                     Href="/tarkovtools"
+                    Disabled="true"
                     Match="NavLinkMatch.All">
             Hideout
         </MudNavLink>
 
         <MudNavLink IconColor="Color.Default" Icon="@Icons.Material.Filled.QuestionAnswer"
                     Href="/tarkovtools"
+                    Disabled="true"
                     Match="NavLinkMatch.All">
             Locales
         </MudNavLink>
         <MudNavLink IconColor="Color.Default" Icon="@Icons.Material.Filled.EditLocation"
                     Href="/tarkovtools"
+                    Disabled="true"
                     Match="NavLinkMatch.All">
             Locations
         </MudNavLink>
 
         <MudNavLink IconColor="Color.Default" Icon="@Icons.Material.Filled.SupervisedUserCircle"
                     Href="/tarkovtools"
+                    Disabled="true"
                     Match="NavLinkMatch.All">
             Profile Templates
         </MudNavLink>
 
         <MudNavLink IconColor="Color.Default" Icon="@Icons.Material.Filled.LocalLibrary"
                     Href="/tarkovtools"
+                    Disabled="true"
                     Match="NavLinkMatch.All">
             Quests
         </MudNavLink>
 
         <MudNavLink IconColor="Color.Default" Icon="@Icons.Material.Filled.KeyboardDoubleArrowUp"
                     Href="/tarkovtools"
+                    Disabled="true"
                     Match="NavLinkMatch.All">
             Skills
         </MudNavLink>
 
         <MudNavLink IconColor="Color.Default" Icon="@Icons.Material.Filled.AccountCircle"
                     Href="/tarkovtools/TraderEditor"
+                    Disabled="!PresetService.IsPresetLoaded"
                     Match="NavLinkMatch.All">
             Traders
         </MudNavLink>
@@ -76,11 +89,13 @@
         </MudNavLink>
         <MudNavLink IconColor="Color.Default" Icon="@Icons.Material.Filled.ConnectedTv"
                     Href="/tarkovtools"
+                    Disabled="true"
                     Match="NavLinkMatch.All">
             Example and Reference
         </MudNavLink>
         <MudNavLink IconColor="Color.Default" Icon="@Icons.Material.Filled.Settings"
                     Href="/tarkovtools/Settings"
+                    Disabled="true"
                     Match="NavLinkMatch.All">
             Settings
         </MudNavLink>
@@ -89,4 +104,42 @@
 
 @code
 {
+    private bool _shouldGoHome;
+    
+    protected override void OnInitialized()
+    {
+        PresetService.OnPresetChanged += HandleStateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        PresetService.OnPresetChanged -= HandleStateHasChanged;
+    }
+    
+    private async void HandleStateHasChanged()
+    {
+        try
+        {
+            await InvokeAsync(async () =>
+            {
+                await Task.Yield();
+                StateHasChanged();
+                _shouldGoHome = true;
+            });
+        }
+        catch (Exception e)
+        {
+            Logger.Error("[TarkovTools] Encountered a critical error during navigation: ", e);
+        }
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (_shouldGoHome)
+        {
+            Navigation.NavigateTo("/tarkovtools");
+            _shouldGoHome = false;
+        }
+        base.OnAfterRender(firstRender);
+    }
 }

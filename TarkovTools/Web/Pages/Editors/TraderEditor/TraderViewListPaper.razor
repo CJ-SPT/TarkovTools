@@ -45,16 +45,12 @@
     
     <MudDivider Class="my-2"/>
     
-    <MudButtonGroup Color="MudBlazor.Color.Primary">
-        
-        <MudButton Variant="Variant.Text" 
-                   FullWidth="true"
-                   Color="MudBlazor.Color.Primary" 
-                   OnClick="@(() => SaveChanges(TraderEditor.SelectedTrader))">
-            Save Changes
-        </MudButton>
-        
-    </MudButtonGroup>
+    <MudButton Variant="Variant.Text" 
+               FullWidth="true"
+               Color="MudBlazor.Color.Primary" 
+               OnClick="@(() => SaveChanges(TraderEditor.SelectedTrader))">
+        Save Changes
+    </MudButton>
 </MudPaper>
 
 @code {

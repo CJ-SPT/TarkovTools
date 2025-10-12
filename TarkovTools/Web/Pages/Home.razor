@@ -150,7 +150,7 @@
     {
         if (_selectedFilter == "all")
             return _releases;
-
+        
         return _releases.Select(r => new ReleaseNote
         {
             Version = r.Version,
