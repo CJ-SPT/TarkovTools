@@ -1,8 +1,6 @@
-﻿using Microsoft.AspNetCore.Components;
-using SPTarkov.DI.Annotations;
+﻿using SPTarkov.DI.Annotations;
 using SPTarkov.Server.Core.Models.Utils;
 using SPTarkov.Server.Core.Services;
-using SPTarkov.Server.Core.Utils;
 using TarkovTools.Models.Presets;
 using TarkovTools.Utils;
 
@@ -13,10 +11,10 @@ public class PresetService(
     ISptLogger<PresetService> logger,
     DatabaseService databaseService,
     SettingsService settingsService,
+    LocaleEditService localeEditService,
     PresetImporterUtil presetImporterUtil,
     PresetExporterUtil presetExporterUtil,
-    PathUtil pathUtil,
-    JsonUtil jsonUtil
+    PathUtil pathUtil
     )
 {
     public Dictionary<string, TarkovToolsPreset> LoadedPresets { get; private set; } = [];
@@ -58,6 +56,7 @@ public class PresetService(
         {
             Name = name,
             Version = 1,
+            GlobalPreset = new GlobalPreset(),
             TraderPreset = new TraderPreset
             {
                 ModifiedTraders = [],
@@ -175,6 +174,7 @@ public class PresetService(
     private void UpdateDatabase(TarkovToolsPreset preset)
     {
         UpdateTraders(preset);
+        UpdateLocales(preset);
     }
 
     private void UpdateTraders(TarkovToolsPreset preset)
@@ -190,6 +190,17 @@ public class PresetService(
                 {
                     dbTraders[presetId] = presetTrader;
                 }
+            }
+        }
+    }
+
+    private void UpdateLocales(TarkovToolsPreset preset)
+    {
+        foreach (var (language, locales) in preset.GlobalPreset.ModifiedLocales)
+        {
+            foreach (var (key, value) in locales)
+            {
+                localeEditService.AddOrModifyLocale(language, key, value);
             }
         }
     }

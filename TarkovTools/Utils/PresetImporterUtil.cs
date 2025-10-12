@@ -39,6 +39,7 @@ public class PresetImporterUtil(
             
             preset.RootPath = directory;
             await ImportTraders(preset.TraderPreset, directory);
+            await ImportLocales(preset.GlobalPreset, directory);
             
             result.Add(preset.Name, preset);
         }
@@ -62,6 +63,31 @@ public class PresetImporterUtil(
             
             preset.ModifiedTraders.Add(trader.Key);
             preset.Traders.Add(trader.Key, trader.Value);
+        }
+    }
+
+    private async Task ImportLocales(GlobalPreset preset, string path)
+    {
+        var localesDir = Path.Combine(path, "locales");
+        
+        if (!Directory.Exists(localesDir))
+        {
+            return;
+        }
+        
+        foreach (var file in Directory.GetFiles(localesDir))
+        {
+            var text = await fileUtil.ReadFileAsync(file);
+            var locales =  jsonUtil.Deserialize<Dictionary<string, string>>(text);
+            var key = Path.GetFileNameWithoutExtension(file);
+
+            if (locales is null)
+            {
+                logger.Error($"[TarkovTools] Locale preset {key} could not be deserialized");
+                continue;
+            }
+            
+            preset.ModifiedLocales[key] = locales;
         }
     }
 }

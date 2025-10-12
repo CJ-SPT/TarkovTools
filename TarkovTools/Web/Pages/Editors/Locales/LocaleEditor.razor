@@ -1,28 +1,43 @@
 ﻿@page "/tarkovtools/locale-editor"
 @layout BaseLayout;
 
+@inject CacheService CacheService
+@inject PresetService PresetService
+@inject LocaleEditService LocaleEditService
+
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
     <MudText Typo="Typo.h4" Class="mb-4">Locale Editor</MudText>
 
     <MudPaper Class="pa-4 mb-4">
         <MudGrid>
             <MudItem xs="12" sm="5">
-                <MudTextField @bind-Value="newKey" Label="Key" Variant="Variant.Outlined" />
+                <MudTextField @bind-Value="_newKey" Label="Key" Variant="Variant.Outlined" />
             </MudItem>
             <MudItem xs="12" sm="5">
-                <MudTextField @bind-Value="newValue" Label="Value" Variant="Variant.Outlined" />
+                <MudTextField @bind-Value="_newValue" Label="Value" Variant="Variant.Outlined" />
             </MudItem>
             <MudItem xs="12" sm="2" Class="d-flex align-center">
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" 
                            OnClick="AddLocale" FullWidth="true"
-                           Disabled="@(string.IsNullOrWhiteSpace(newKey) || string.IsNullOrWhiteSpace(newValue))">
+                           Disabled="@(string.IsNullOrWhiteSpace(_newKey) || string.IsNullOrWhiteSpace(_newValue))">
                     Add
                 </MudButton>
+            </MudItem>
+            <MudItem xs="12" sm="5" Class="d-flex align-center">
+                <MudTextField @bind-Value="_searchString1" 
+                              Placeholder="Search" 
+                              Adornment="Adornment.Start" 
+                              AdornmentIcon="@Icons.Material.Filled.Search" 
+                              IconSize="Size.Medium" Class="mt-0"/>
             </MudItem>
         </MudGrid>
     </MudPaper>
 
-    <MudTable Items="@locales" Hover="true" Breakpoint="Breakpoint.Sm" Dense="true">
+    <MudTable Items="@_locales"
+              Hover="true" 
+              Breakpoint="Breakpoint.Sm"
+              Dense="true"
+              Filter="new Func<KeyValuePair<string, string>, bool>(FilterFunc1)">
         <HeaderContent>
             <MudTh>Key</MudTh>
             <MudTh>Value</MudTh>
@@ -30,9 +45,9 @@
         </HeaderContent>
         <RowTemplate>
             <MudTd DataLabel="Key">
-                @if (editingKey == context.Key)
+                @if (_editingKey == context.Key)
                 {
-                    <MudTextField @bind-Value="editKey" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    <MudTextField @bind-Value="_editKey" Variant="Variant.Outlined" Margin="Margin.Dense" />
                 }
                 else
                 {
@@ -40,9 +55,9 @@
                 }
             </MudTd>
             <MudTd DataLabel="Value">
-                @if (editingKey == context.Key)
+                @if (_editingKey == context.Key)
                 {
-                    <MudTextField @bind-Value="editValue" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    <MudTextField @bind-Value="_editValue" Variant="Variant.Outlined" Margin="Margin.Dense" />
                 }
                 else
                 {
@@ -50,7 +65,7 @@
                 }
             </MudTd>
             <MudTd DataLabel="Actions">
-                @if (editingKey == context.Key)
+                @if (_editingKey == context.Key)
                 {
                     <MudIconButton Icon="@Icons.Material.Filled.Check" Color="Color.Success" 
                                    Size="Size.Small" OnClick="@(() => SaveEdit(context.Key))" />
@@ -66,9 +81,12 @@
                 }
             </MudTd>
         </RowTemplate>
+        <PagerContent>
+            <MudTablePager PageSizeOptions="new []{ 10, 20, 30, 40, 50 }" />
+        </PagerContent>
     </MudTable>
 
-    @if (!locales.Any())
+    @if (!_locales.Any())
     {
         <MudPaper Class="pa-4 mt-4">
             <MudText Align="Align.Center" Color="Color.Secondary">No locale entries yet. Add your first entry above.</MudText>
@@ -77,67 +95,144 @@
 </MudContainer>
 
 @code {
-    private Dictionary<string, string> locales = new();
-    private string newKey = string.Empty;
-    private string newValue = string.Empty;
-    private string? editingKey = null;
-    private string editKey = string.Empty;
-    private string editValue = string.Empty;
+    private Dictionary<string, string> _locales = [];
+    private string _newKey = string.Empty;
+    private string _newValue = string.Empty;
+    private string? _editingKey = null;
+    private string _editKey = string.Empty;
+    private string _editValue = string.Empty;
 
+    private KeyValuePair<string, string> _selectedItem;
+    private string _searchString1 = "";
+    
     protected override void OnInitialized()
     {
-        // Sample data - remove this in production
-        locales.Add("welcome_message", "Welcome to our application");
-        locales.Add("login_button", "Login");
-        locales.Add("logout_button", "Logout");
+        foreach (var (key, value) in CacheService.GlobalLocales ?? [])
+        {
+            _locales.Add(key, value);
+        }
     }
 
     private void AddLocale()
     {
-        if (string.IsNullOrWhiteSpace(newKey) || string.IsNullOrWhiteSpace(newValue))
-            return;
-
-        if (locales.ContainsKey(newKey))
+        if (PresetService.SelectedPreset is null)
         {
-            // Handle duplicate key - you could use MudBlazor Snackbar here
+            return;
+        }
+        
+        if (string.IsNullOrWhiteSpace(_newKey) || string.IsNullOrWhiteSpace(_newValue))
+        {
             return;
         }
 
-        locales.Add(newKey, newValue);
-        newKey = string.Empty;
-        newValue = string.Empty;
+        if (_locales.TryAdd(_newKey, _newValue))
+        {
+            LocaleEditService.AddOrModifyLocale("en", _newKey, _newValue);
+            AddLocaleToPreset("en", _newKey, _newValue);
+            return;
+        }
+        
+        _newKey = string.Empty;
+        _newValue = string.Empty;
     }
 
     private void StartEdit(string key, string value)
     {
-        editingKey = key;
-        editKey = key;
-        editValue = value;
+        if (PresetService.SelectedPreset is null)
+        {
+            return;
+        }
+        
+        _editingKey = key;
+        _editKey = key;
+        _editValue = value;
     }
 
     private void SaveEdit(string originalKey)
     {
-        if (string.IsNullOrWhiteSpace(editKey) || string.IsNullOrWhiteSpace(editValue))
+        if (PresetService.SelectedPreset is null)
+        {
             return;
+        }
+        
+        if (string.IsNullOrWhiteSpace(_editKey) || string.IsNullOrWhiteSpace(_editValue))
+        {
+            return;
+        }
 
-        locales.Remove(originalKey);
-        locales.Add(editKey, editValue);
+        LocaleEditService.AddOrModifyLocale("en", originalKey, _editValue);
+        _locales[originalKey] = _editValue;
+        AddLocaleToPreset("en", _editKey, _editValue);
+        
         CancelEdit();
     }
 
     private void CancelEdit()
     {
-        editingKey = null;
-        editKey = string.Empty;
-        editValue = string.Empty;
+        if (PresetService.SelectedPreset is null)
+        {
+            return;
+        }
+        
+        _editingKey = null;
+        _editKey = string.Empty;
+        _editValue = string.Empty;
     }
 
     private void DeleteLocale(string key)
     {
-        locales.Remove(key);
-        if (editingKey == key)
+        if (PresetService.SelectedPreset is null)
+        {
+            return;
+        }
+        
+        _locales.Remove(key);
+        
+        if (_editingKey == key)
         {
             CancelEdit();
         }
+    }
+    
+    private void AddLocaleToPreset(string lang, string key, string value)
+    {
+        var globalPreset = PresetService.SelectedPreset?.GlobalPreset;
+        if (globalPreset is null)
+        {
+            return;
+        }
+        
+        // Ensure a collection exists for this language
+        globalPreset.ModifiedLocales.TryAdd(lang, []);
+        var locales = globalPreset.ModifiedLocales[lang];
+
+        if (!locales.TryAdd(key, value))
+        {
+            locales[key] = value;
+        }
+        
+        globalPreset.HasLocaleModifications = true;
+    }
+    
+    private bool FilterFunc1(KeyValuePair<string, string> locales) => FilterFunc(locales, _searchString1);
+
+    private bool FilterFunc(KeyValuePair<string, string> locale, string searchString)
+    {
+        if (string.IsNullOrWhiteSpace(searchString))
+        {
+            return true;
+        }
+
+        if (locale.Key.Contains(searchString))
+        {
+            return true;
+        }
+
+        if (locale.Value.Contains(searchString))
+        {
+            return true;
+        }
+        
+        return false;
     }
 }

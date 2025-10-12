@@ -26,9 +26,10 @@ public class PresetExporterUtil(
         try
         {
             var json =  jsonUtil.Serialize(preset, true);
-            await File.WriteAllTextAsync(Path.Combine(pathUtil.PresetPath, preset.Name, "preset.json"), json);
+            await fileUtil.WriteFileAsync(Path.Combine(pathUtil.PresetPath, preset.Name, "preset.json"), json);
         
             await ExportTraders(preset.TraderPreset, presetDir);
+            await ExportLocales(preset.GlobalPreset, presetDir);
         }
         catch (Exception e)
         {
@@ -46,10 +47,26 @@ public class PresetExporterUtil(
             Directory.CreateDirectory(tradersDir);
         }
         
-        foreach (var trader in preset.Traders)
+        foreach (var (id, trader) in preset.Traders)
         {
             var json =  jsonUtil.Serialize(trader, true);
-            await File.WriteAllTextAsync(Path.Combine(tradersDir, $"{trader.Key.ToString()}.json"), json);
+            await fileUtil.WriteFileAsync(Path.Combine(tradersDir, $"{id.ToString()}.json"), json);
+        }
+    }
+
+    private async Task ExportLocales(GlobalPreset preset, string path)
+    {
+        var localesDir = Path.Combine(path, "locales");
+        
+        if (!Directory.Exists(localesDir))
+        {
+            Directory.CreateDirectory(localesDir);
+        }
+        
+        foreach (var (language, locales) in preset.ModifiedLocales)
+        {
+            var json =  jsonUtil.Serialize(locales, true);
+            await fileUtil.WriteFileAsync(Path.Combine(localesDir, $"{language}.json"), json);
         }
     }
 }
